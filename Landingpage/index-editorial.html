@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dice & Co. — Maison du Jeu</title>
+<meta name="description" content="Dice & Co. — cửa hàng board game chọn lọc. Mỗi hộp game một câu chuyện, một tông màu, một buổi tối đáng nhớ.">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Italianno&family=Fraunces:ital,wght@0,500;0,600;0,700;0,800;0,900;1,600&family=Be+Vietnam+Pro:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+
+<link rel="stylesheet" href="css/editorial.css">
+</head>
+<body>
+
+<div class="grain-overlay"></div>
+
+<!-- NAVBAR -->
+<nav id="eNavbar" class="e-navbar">
+  <div class="e-navbar-inner">
+    <a href="#home" class="e-logo">Dice<span>&amp;Co.</span></a>
+    <div class="e-nav-links">
+      <a href="#collection">Bộ sưu tập</a>
+      <a href="#featured">Game nổi bật</a>
+      <a href="#occasions">Phù hợp cho</a>
+      <a href="#contact">Liên hệ</a>
+    </div>
+    <a href="#contact" class="e-btn-nav">Đặt bàn</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section id="home" class="e-hero">
+  <div class="e-hero-bg" style="background-image:url('assets/images/people-playing.jpg')"></div>
+  <div class="e-hero-overlay"></div>
+  <div class="e-sparkle e-sparkle-1">✦</div>
+  <div class="e-sparkle e-sparkle-2">✦</div>
+  <div class="e-sparkle e-sparkle-3">✦</div>
+  <div class="e-hero-content">
+    <span class="e-eyebrow" data-ed-reveal>Maison du Jeu — Lyon, từ 2013</span>
+    <h1 class="e-signature" data-ed-reveal>Dice &amp; Co.</h1>
+    <p class="e-hero-sub" data-ed-reveal>Một chiều thứ Bảy, một ván cờ, những người bạn cũ.<br>Board game chọn lọc, mỗi hộp một câu chuyện riêng.</p>
+    <div class="e-hero-cta" data-ed-reveal>
+      <a href="#collection" class="e-btn-primary">Khám phá bộ sưu tập</a>
+      <a href="#featured" class="e-btn-ghost">Xem game nổi bật</a>
+    </div>
+  </div>
+  <div class="e-scroll-hint" data-ed-reveal>cuộn để khám phá</div>
+</section>
+
+<!-- FEATURED GAME REVEAL -->
+<section id="featured" class="e-featured">
+  <div class="e-featured-grid">
+    <div class="e-featured-media">
+      <div class="e-featured-photo" style="background-image:url('assets/images/game-ludo.jpg')" data-ed-reveal></div>
+      <div class="e-note-card" data-ed-note>
+        <span class="e-note-formula">Bộ luật số 04 · Gia đình</span>
+        <h3 class="e-note-title">Cờ Cá Ngựa Premium</h3>
+        <div class="e-note-row">
+          <span class="e-note-label">Khởi động</span>
+          <span class="e-note-value">2–4 người, 5 phút bày bàn</span>
+        </div>
+        <div class="e-note-row">
+          <span class="e-note-label">Lối chơi chính</span>
+          <span class="e-note-value">May rủi xen chiến thuật, đổ xúc xắc đua về đích</span>
+        </div>
+        <div class="e-note-row">
+          <span class="e-note-label">Dư vị</span>
+          <span class="e-note-value">Tiếng cười, đôi lúc cả tiếng... cãi nhau nhẹ</span>
+        </div>
+        <div class="e-note-foot">
+          <span>Chọn lọc tại Dice &amp; Co., TP.HCM</span>
+        </div>
+      </div>
+    </div>
+    <div class="e-featured-text" data-ed-reveal>
+      <span class="e-eyebrow">Game nổi bật tuần này</span>
+      <h2 class="e-h2">Một buổi chiều<br>không vội vàng</h2>
+      <p class="e-p">Cờ Cá Ngựa không cần luật phức tạp, không cần giải thích dài dòng — chỉ cần một cái bàn, vài viên xúc xắc, và những người bạn sẵn sàng cười to khi bị đá về chuồng.</p>
+      <div class="e-price-row">
+        <div class="e-size-toggle">
+          <button class="e-size-btn active">Mua</button>
+          <button class="e-size-btn">Thuê/ngày</button>
+        </div>
+        <div class="e-add-row">
+          <span class="e-price">250.000đ</span>
+          <button class="e-btn-primary">Thêm vào giỏ</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- COLLECTION -->
+<section id="collection" class="e-collection">
+  <div class="e-container">
+    <div class="e-section-head" data-ed-reveal>
+      <span class="e-eyebrow">Bộ sưu tập</span>
+      <h2 class="e-h2">Mỗi hộp game,<br>một tông màu riêng</h2>
+      <p class="e-p">Từ chiến thuật sâu sắc đến giải trí nhẹ nhàng — chọn theo cảm xúc bạn muốn mang đến bàn chơi.</p>
+    </div>
+
+    <div class="e-collection-grid">
+      <article class="e-product-card e-tone-amber" data-ed-reveal>
+        <div class="e-product-photo" style="background-image:url('assets/images/game-monopoly.jpg')"></div>
+        <div class="e-product-body">
+          <h3>Cờ Tỷ Phú Monopoly</h3>
+          <p class="e-product-desc">Tham vọng, mặc cả, và một chút lạnh lùng với người thân.</p>
+          <div class="e-product-foot">
+            <span class="e-product-meta">2–6 người · 60–90 phút</span>
+            <span class="e-product-price">420.000đ</span>
+          </div>
+          <button class="e-btn-outline e-btn-block">Thêm nhanh</button>
+        </div>
+      </article>
+
+      <article class="e-product-card e-tone-forest" data-ed-reveal>
+        <div class="e-product-photo" style="background-image:url('assets/images/game-chess.jpg')"></div>
+        <div class="e-product-body">
+          <h3>Bộ Cờ Vua Cao Cấp</h3>
+          <p class="e-product-desc">Tĩnh lặng, tập trung — một cuộc đối thoại không lời.</p>
+          <div class="e-product-foot">
+            <span class="e-product-meta">2 người · 30–60 phút</span>
+            <span class="e-product-price">350.000đ</span>
+          </div>
+          <button class="e-btn-outline e-btn-block">Thêm nhanh</button>
+        </div>
+      </article>
+
+      <article class="e-product-card e-tone-wine" data-ed-reveal>
+        <div class="e-product-photo" style="background-image:url('assets/images/game-cards.jpg')"></div>
+        <div class="e-product-body">
+          <h3>Bộ Bài Chiến Thuật</h3>
+          <p class="e-product-desc">Giữ mặt lạnh, giấu bài tốt — ai cười sau cùng mới thắng.</p>
+          <div class="e-product-foot">
+            <span class="e-product-meta">2–8 người · 20–45 phút</span>
+            <span class="e-product-price">150.000đ</span>
+          </div>
+          <button class="e-btn-outline e-btn-block">Thêm nhanh</button>
+        </div>
+      </article>
+
+      <article class="e-product-card e-tone-sky" data-ed-reveal>
+        <div class="e-product-photo" style="background-image:url('assets/images/dice-blue.jpg')"></div>
+        <div class="e-product-body">
+          <h3>Bộ Xúc Xắc Chiến Thuật</h3>
+          <p class="e-product-desc">Nhanh, gọn, may rủi vừa đủ cho một tối giữa tuần.</p>
+          <div class="e-product-foot">
+            <span class="e-product-meta">2–6 người · 15–30 phút</span>
+            <span class="e-product-price">120.000đ</span>
+          </div>
+          <button class="e-btn-outline e-btn-block">Thêm nhanh</button>
+        </div>
+      </article>
+    </div>
+
+    <div class="e-section-cta" data-ed-reveal>
+      <a href="#" class="e-btn-primary">Xem toàn bộ 300+ tựa game</a>
+    </div>
+  </div>
+</section>
+
+<!-- OCCASIONS STRIP -->
+<section id="occasions" class="e-occasions">
+  <div class="e-occasions-bg"></div>
+  <div class="e-container">
+    <div class="e-occasions-head" data-ed-reveal>
+      <h2 class="e-h2">Phù hợp cho <span class="e-h2-script">mọi dịp</span></h2>
+      <p class="e-p-light">Không phải lúc nào cũng cần một chiến thuật gia. Chọn theo không khí bạn muốn.</p>
+    </div>
+    <div class="e-occasions-row">
+      <div class="e-occasion-item" data-ed-reveal data-ed-index="01">
+        <span class="e-occasion-num">01</span>
+        <div class="e-occasion-swatch" style="background-image:url('assets/images/game-ludo.jpg')"></div>
+        <span class="e-occasion-name">Gia đình chủ nhật</span>
+      </div>
+      <div class="e-occasion-item" data-ed-reveal data-ed-index="02">
+        <span class="e-occasion-num">02</span>
+        <div class="e-occasion-swatch" style="background-image:url('assets/images/game-cards.jpg')"></div>
+        <span class="e-occasion-name">Hẹn hò nhẹ nhàng</span>
+      </div>
+      <div class="e-occasion-item" data-ed-reveal data-ed-index="03">
+        <span class="e-occasion-num">03</span>
+        <div class="e-occasion-swatch" style="background-image:url('assets/images/lego-colorful.jpg')"></div>
+        <span class="e-occasion-name">Tiệc đông bạn bè</span>
+      </div>
+      <div class="e-occasion-item" data-ed-reveal data-ed-index="04">
+        <span class="e-occasion-num">04</span>
+        <div class="e-occasion-swatch" style="background-image:url('assets/images/game-chess.jpg')"></div>
+        <span class="e-occasion-name">Đêm chiến thuật</span>
+      </div>
+      <div class="e-occasion-item" data-ed-reveal data-ed-index="05">
+        <span class="e-occasion-num">05</span>
+        <div class="e-occasion-swatch" style="background-image:url('assets/images/game-meeples.jpg')"></div>
+        <span class="e-occasion-name">Team building</span>
+      </div>
+      <div class="e-occasion-item" data-ed-reveal data-ed-index="06">
+        <span class="e-occasion-num">06</span>
+        <div class="e-occasion-swatch" style="background-image:url('assets/images/dice-blue.jpg')"></div>
+        <span class="e-occasion-name">Quà tặng</span>
+      </div>
+    </div>
+    <div class="e-occasions-cta" data-ed-reveal>
+      <a href="#contact" class="e-btn-primary-dark">Đặt combo trải nghiệm — 890.000đ</a>
+    </div>
+  </div>
+</section>
+
+<!-- CONTACT -->
+<section id="contact" class="e-contact">
+  <div class="e-container e-contact-grid">
+    <div data-ed-reveal>
+      <span class="e-eyebrow">Ghé thăm</span>
+      <h2 class="e-h2">Hẹn gặp bạn<br>tại Dice &amp; Co.</h2>
+      <p class="e-p">123 Đường Nguyễn Huệ, Quận 1, TP. Hồ Chí Minh<br>09:00 – 23:00, tất cả các ngày trong tuần<br>Hotline: 0909 123 456</p>
+    </div>
+    <form class="e-form" data-ed-reveal onsubmit="return false;">
+      <input type="text" placeholder="Họ và tên" required>
+      <input type="tel" placeholder="Số điện thoại" required>
+      <input type="email" placeholder="Email" required>
+      <button type="submit" class="e-btn-primary e-btn-block">Gửi yêu cầu đặt bàn</button>
+    </form>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer class="e-footer">
+  <div class="e-footer-texture"></div>
+  <div class="e-container e-footer-top">
+    <div class="e-footer-col">
+      <strong>Địa chỉ</strong>
+      <p>123 Nguyễn Huệ, Q.1<br>TP. Hồ Chí Minh</p>
+    </div>
+    <div class="e-footer-col">
+      <strong>Giờ mở cửa</strong>
+      <p>09:00 – 23:00<br>Tất cả các ngày</p>
+    </div>
+    <div class="e-footer-col e-footer-col-right">
+      <strong>Theo dõi</strong>
+      <p><a href="#">Instagram</a> · <a href="#">Facebook</a></p>
+    </div>
+  </div>
+  <h2 class="e-footer-signature">Dice &amp; Co.</h2>
+  <p class="e-footer-tagline">Một hộp game mỗi lần. Không gì khác xen vào.</p>
+  <div class="e-footer-bottom">
+    <span>© 2026 Dice & Co.</span>
+    <span>VI / EN</span>
+  </div>
+</footer>
+
+<script src="js/editorial.js"></script>
+</body>
+</html>

@@ -1,0 +1,8 @@
+.claude/*
+!.claude/skills/
+__pycache__/
+*.pyc
+~$*.docx
+~$*.xlsx
+~$*.pptx
+.$*.drawio.bkp
