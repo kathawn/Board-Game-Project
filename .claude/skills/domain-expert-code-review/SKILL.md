@@ -1,6 +1,6 @@
 ---
 name: domain-expert-code-review
-description: Use after backend code for a spec-described feature is implemented and before acceptance tests are written, to verify the code matches the spec's business rules
+description: Use when backend code for a spec-described feature has just been implemented, before acceptance tests are written, to verify the code matches the spec's business rules
 ---
 
 # Domain Expert Code Review
