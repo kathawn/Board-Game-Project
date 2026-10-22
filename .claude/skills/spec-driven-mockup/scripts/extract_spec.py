@@ -38,16 +38,27 @@ def extract_from_md(path: Path, query: str) -> list[Section]:
     blocks: list[tuple[str, list[str]]] = []
     current_heading = None
     current_lines: list[str] = []
+    preamble_lines: list[str] = []
     for line in lines:
         if line.startswith("#"):
             if current_heading is not None:
                 blocks.append((current_heading, current_lines))
+            else:
+                preamble_lines = current_lines
             current_heading = line.lstrip("#").strip()
             current_lines = []
         else:
             current_lines.append(line)
     if current_heading is not None:
         blocks.append((current_heading, current_lines))
+    elif not blocks:
+        # No heading found anywhere in the document — leave this to the
+        # caller's existing NoMatchError handling rather than inventing a
+        # preamble block out of a headless document.
+        preamble_lines = []
+
+    if blocks and preamble_lines and "\n".join(preamble_lines).strip():
+        blocks.insert(0, ("(mở đầu)", preamble_lines))
 
     sections: list[Section] = []
     for heading, body_lines in blocks:
@@ -68,21 +79,28 @@ def extract_from_docx(path: Path, query: str) -> list[Section]:
     blocks: list[tuple[str, list[str]]] = []
     current_heading = None
     current_lines: list[str] = []
+    preamble_lines: list[str] = []
     for paragraph in doc.paragraphs:
         style_name = paragraph.style.name if paragraph.style else ""
         if style_name.startswith("Heading") or style_name == "Title":
             if current_heading is not None:
                 blocks.append((current_heading, current_lines))
+            else:
+                preamble_lines = current_lines
             current_heading = paragraph.text
             current_lines = []
         else:
             current_lines.append(paragraph.text)
     if current_heading is not None:
         blocks.append((current_heading, current_lines))
+    else:
+        preamble_lines = current_lines
 
     if not blocks:
         whole_text = "\n".join(p.text for p in doc.paragraphs).strip()
         blocks = [("(toàn văn)", whole_text.splitlines())]
+    elif preamble_lines and "\n".join(preamble_lines).strip():
+        blocks.insert(0, ("(mở đầu)", preamble_lines))
 
     sections: list[Section] = []
     for heading, body_lines in blocks:
@@ -151,10 +169,28 @@ def main(argv: list[str] | None = None) -> None:
         print(str(exc), file=sys.stderr)
         sys.exit(1)
 
-    for section in sections[: args.max_results]:
-        print(f"=== {section.heading} ({section.location}) ===")
-        print(section.text)
-        print()
+    # Stock Windows consoles default stdout to a narrow legacy codepage (e.g.
+    # cp1252), which cannot encode non-ASCII text (Vietnamese diacritics,
+    # etc.) that this tool routinely extracts. Reconfigure to UTF-8 up front
+    # so printing just works without the caller having to set
+    # PYTHONIOENCODING themselves.
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+    except (AttributeError, ValueError):
+        pass
+
+    try:
+        for section in sections[: args.max_results]:
+            print(f"=== {section.heading} ({section.location}) ===")
+            print(section.text)
+            print()
+    except UnicodeEncodeError:
+        print(
+            "Output contains characters your terminal's encoding can't display. "
+            "Re-run with PYTHONIOENCODING=utf-8 set.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
 
 
 if __name__ == "__main__":
