@@ -1,21 +1,18 @@
-import { Dice5 } from "lucide-react";
+import Image from "next/image";
 import type { Product } from "@/lib/products";
 import { formatVND } from "@/lib/products";
-
-const TONE_BG: Record<Product["tone"], string> = {
-  amber: "bg-amber",
-  forest: "bg-forest",
-  wine: "bg-wine",
-  sky: "bg-sky",
-};
 
 export function ProductCard({ product }: { product: Product }) {
   return (
     <article className="overflow-hidden rounded bg-card shadow-[0_20px_40px_-20px_rgba(42,31,26,0.2)] transition-all duration-400 hover:-translate-y-1.5 hover:shadow-[0_30px_50px_-18px_rgba(42,31,26,0.3)]">
-      <div
-        className={`relative flex h-48 items-center justify-center ${TONE_BG[product.tone]}/50`}
-      >
-        <Dice5 className="h-12 w-12 text-ink/70" aria-hidden />
+      <div className="relative h-48 w-full">
+        <Image
+          src={product.anh}
+          alt={product.ten}
+          fill
+          className="object-cover"
+          sizes="(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw"
+        />
       </div>
       <div className="p-5">
         <h3 className="mb-2 font-heading text-lg">{product.ten}</h3>

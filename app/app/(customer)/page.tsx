@@ -1,4 +1,5 @@
 import { Dice5, Gamepad2, Users2, HeartHandshake, Gift, PartyPopper } from "lucide-react";
+import Link from "next/link";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { ProductCard } from "@/components/ProductCard";
@@ -162,12 +163,12 @@ export default function CustomerHome() {
           </div>
 
           <Reveal className="mt-14 text-center">
-            <a
-              href="#"
+            <Link
+              href="/products"
               className="inline-flex items-center justify-center bg-wine px-8 py-4 text-[13px] font-semibold uppercase tracking-wider text-paper transition-colors hover:bg-wine-deep"
             >
               Xem toàn bộ sản phẩm
-            </a>
+            </Link>
           </Reveal>
         </div>
       </section>

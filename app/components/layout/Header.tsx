@@ -5,10 +5,10 @@ import { useEffect, useState } from "react";
 import { ShoppingCart, User } from "lucide-react";
 
 const NAV_LINKS = [
-  { href: "#collection", label: "Bộ sưu tập" },
-  { href: "#featured", label: "Sản phẩm nổi bật" },
-  { href: "#occasions", label: "Phù hợp cho" },
-  { href: "#contact", label: "Liên hệ" },
+  { href: "/products", label: "Bộ sưu tập" },
+  { href: "/#featured", label: "Sản phẩm nổi bật" },
+  { href: "/#occasions", label: "Phù hợp cho" },
+  { href: "/#contact", label: "Liên hệ" },
 ];
 
 export function Header() {
