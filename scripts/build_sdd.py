@@ -64,7 +64,9 @@ ds.table(doc, ["Thành phần", "Lựa chọn", "Lý do"], pd.TECH_STACK, col_wi
 # ===========================================================================
 ds.heading(doc, "3. Thiết kế Schema Prisma", level=1)
 ds.para(doc, "Chuyển đổi trực tiếp từ ERD đã chốt ở SRS mục 3.5 (Hình 3.3): đầy đủ 11 model, khớp 1-1 với 11 "
-             "thực thể của ERD và với Từ điển dữ liệu ở SRS mục 7.1.")
+             "thực thể của ERD và với Từ điển dữ liệu ở SRS mục 7.1. Trong ChiTietDonHang, soLuong chỉ có ý nghĩa với "
+             "đơn mua (loai = Ban, mặc định 1, có thể > 1 — FR-BH-08); ngayBatDau/ngayKetThuc là NULL với đơn mua và "
+             "bắt buộc với đơn thuê (loai = Thue).")
 ds.code_block(doc, '''
 model KhachHang {
   id            String   @id @default(uuid())
@@ -81,6 +83,7 @@ model SanPham {
   moTa          String
   giaNiemYet    Decimal
   danhMuc       String
+  anhUrl        String?
   hopGame       HopGame[]
   linhKien      LinhKien[]
   chiTietDon    ChiTietDonHang[]
@@ -105,7 +108,10 @@ model LinhKien {
 model NhanVien {
   id            String   @id @default(uuid())
   hoTen         String
+  email         String   @unique
+  matKhauHash   String
   vaiTro        VaiTroNhanVien
+  dangHoatDong  Boolean  @default(true)
   bienBanKiemDem BienBanKiemDem[]
 }
 
@@ -127,8 +133,9 @@ model ChiTietDonHang {
   donHang      DonHang  @relation(fields: [donHangId], references: [id])
   sanPhamId    String
   sanPham      SanPham  @relation(fields: [sanPhamId], references: [id])
-  ngayBatDau   DateTime
-  ngayKetThuc  DateTime
+  soLuong      Int      @default(1)
+  ngayBatDau   DateTime?
+  ngayKetThuc  DateTime?
   donGia       Decimal
   hinhThucNhan HinhThucNhan  @default(TuDenLay)
   hinhThucTra  HinhThucTra?
@@ -184,7 +191,7 @@ model BienBanKiemDem {
 ds.heading(doc, "4. PostgreSQL Types & Enum", level=1)
 ds.table(doc, ["Enum", "Giá trị", "Dùng ở Model"], [
     ["TrangThaiDon", "Pending, Confirmed, Active, Overdue, Completed, Closed", "DonHang (khớp State Machine SRS Hình 3.6)"],
-    ["TrangThaiHopGame", "Available, Reserved, Rented, Checking, Damaged", "HopGame (khớp State Machine SRS Hình 3.7)"],
+    ["TrangThaiHopGame", "Available, Reserved, Rented, Checking, Damaged, Sold", "HopGame (khớp State Machine SRS Hình 3.7)"],
     ["LoaiDonHang", "Ban, Thue", "DonHang"],
     ["TrangThaiCoc", "Held, Refunded, Partially_Refunded", "DatCoc"],
     ["VaiTroNhanVien", "Staff, Admin", "NhanVien"],
@@ -229,11 +236,12 @@ for name, _cat, _lo, _hi, _price, comps in pd.SAMPLE_GAMES:
 
 ds.heading(doc, "8. Kịch bản Seed Data", level=1)
 ds.numbered(doc, [
-    "Tạo 3 tài khoản demo: 1 Customer (bảng KhachHang), 1 Staff và 1 Admin (bảng NhanVien) — mật khẩu demo đã băm.",
+    "Tạo 3 tài khoản demo: 1 Customer (bảng KhachHang), 1 Staff và 1 Admin (bảng NhanVien, có email/matKhauHash riêng, dangHoatDong = true) — mật khẩu demo đã băm.",
     "Nạp 5 sản phẩm mẫu ở mục 6 kèm danh sách linh kiện tương ứng ở mục 7 vào bảng SanPham/LinhKien.",
-    "Với mỗi sản phẩm, tạo 2 bản ghi HopGame ở trạng thái Available để có dữ liệu thử nghiệm đặt thuê.",
+    "Với mỗi sản phẩm, tạo 2 bản ghi HopGame ở trạng thái Available để có dữ liệu thử nghiệm đặt thuê, riêng 2 sản phẩm (UNO, Cờ Cá Ngựa) tạo thêm mỗi sản phẩm 2 bản ghi HopGame ở trạng thái Sold để kiểm thử giỏ hàng nhiều sản phẩm/số lượng.",
     "Tạo 2 đơn thuê mẫu: 1 đơn Active với hinhThucNhan = TuDenLay (không phí ship), 1 đơn Completed đã hoàn cọc với hinhThucNhan = GiaoVan khu vực NoiThanh (có GiaoVan + ThanhToan mẫu) để kiểm thử cả hai nhánh BRU-01/BRU-05.",
     "Với đơn Completed, tạo kèm 1 bản ghi ThanhToan (mucDich = TienCoc, trangThai = DaThanhToan, có maQR) và 1 bản ghi BienBanKiemDem (ketQua = 'Đủ linh kiện') để kiểm thử luồng hoàn cọc đầy đủ.",
+    "Tạo 1 đơn mua mẫu (loai = Ban) đã Confirmed, gồm 2 dòng ChiTietDonHang: UNO soLuong = 2 và Cờ Cá Ngựa soLuong = 1, gắn với các bản ghi HopGame trạng thái Sold ở trên, để kiểm thử luồng giỏ hàng nhiều sản phẩm (UC-03/FR-BH-08/09).",
 ])
 
 # ===========================================================================
@@ -251,13 +259,16 @@ ds.picture(doc, DIAG + "sdd_navigation_flow.png", width_cm=11)
 ds.heading(doc, "11. Wireframe UI phía Khách hàng", level=1)
 ds.para(doc, "Kế thừa và giữ nguyên 4 wireframe đã thiết kế ở SRS Phụ lục A (SCR-01 Danh sách sản phẩm, SCR-02 "
              "Chi tiết sản phẩm & Đặt thuê, SCR-06 Thanh toán mã QR, SCR-07 Yêu cầu giao vận lấy hàng trả); không "
-             "lặp lại hình tại đây để tránh trùng lặp tài liệu. SCR-03 (Giỏ hàng / Thanh toán) chưa có wireframe ở "
-             "SRS nên được bổ sung dưới đây:")
+             "lặp lại hình tại đây để tránh trùng lặp tài liệu. SCR-03 (Giỏ hàng / Thanh toán) và SCR-10 (Quên/đặt "
+             "lại mật khẩu) chưa có wireframe ở SRS nên được bổ sung dưới đây:")
 ds.picture(doc, DIAG + "sdd_wireframe_cart.png", width_cm=9)
+ds.picture(doc, DIAG + "sdd_wireframe_forgot_password.png", width_cm=9)
 
 ds.heading(doc, "12. Wireframe UI phía POS/Admin", level=1)
 ds.picture(doc, DIAG + "sdd_wireframe_pos.png", width_cm=9)
 ds.picture(doc, DIAG + "sdd_wireframe_report.png", width_cm=9)
+ds.picture(doc, DIAG + "sdd_wireframe_staff_login.png", width_cm=9)
+ds.picture(doc, DIAG + "sdd_wireframe_staff_admin.png", width_cm=9)
 
 # ===========================================================================
 # 13. THUAT TOAN KIEM TRA TON KHO
@@ -385,8 +396,16 @@ function xuLyWebhookVanChuyen(request):
 # ===========================================================================
 ds.heading(doc, "17. Đặc tả API Endpoints", level=1)
 ds.table(doc, ["Method", "Path", "Request body", "Response body", "Status"], [
-    ["GET", "/api/products", "— (query: danhMuc, giaMin, giaMax)", "SanPham[]", "200"],
+    ["GET", "/api/products", "— (query: danhMuc, giaMin, giaMax, q)", "SanPham[]", "200"],
     ["GET", "/api/products/:id", "—", "SanPham + linhKien[] + hopGame[]", "200 / 404"],
+    ["POST", "/api/auth/forgot-password", "{email}", "{sent: true}", "200"],
+    ["POST", "/api/auth/reset-password", "{token, matKhauMoi}", "{reset: true}", "200 / 400 (token hết hiệu lực)"],
+    ["GET", "/api/cart", "—", "{items: [{sanPhamId, soLuong, donGia}]}", "200"],
+    ["POST", "/api/cart/items", "{sanPhamId, soLuong}", "{items: [...]}", "200 / 409 (vượt số lượng còn hàng)"],
+    ["PATCH", "/api/cart/items/:sanPhamId", "{soLuong}", "{items: [...]}", "200 / 409"],
+    ["DELETE", "/api/cart/items/:sanPhamId", "—", "{items: [...]}", "200"],
+    ["POST", "/api/orders", "{hinhThucNhan, khuVucNhan?} (tạo đơn từ giỏ hàng hiện tại)", "{donHangId, tienHang, phiShip}", "201 / 409 (hết hàng)"],
+    ["POST", "/api/orders/:id/cancel", "—", "{trangThai: 'Cancelled'}", "200 / 409 (đơn không ở Pending)"],
     ["POST", "/api/rentals", "{sanPhamId, ngayBatDau, ngayKetThuc, hinhThucNhan, khuVucNhan?}", "{donHangId, tienThue, phiShip, tienCoc}", "201 / 409 (trùng lịch)"],
     ["POST", "/api/rentals/:id/confirm", "{nhanVienId}", "{trangThai: 'Confirmed'}", "200 / 404"],
     ["POST", "/api/rentals/:id/checkin", "{ketQuaKiemDem[]}", "{bienBanId, trangThaiHopGame}", "200"],
@@ -396,7 +415,12 @@ ds.table(doc, ["Method", "Path", "Request body", "Response body", "Status"], [
     ["POST", "/api/payments/webhook", "(từ MoMo) {maQR, trangThaiMoMo, soTien}", "{received: true}", "200 / 401 / 404"],
     ["POST", "/api/shipments", "{chiTietDonId, chieu, khuVuc}", "{maVanDon, phiShip}", "201"],
     ["POST", "/api/shipments/webhook", "(từ Green SM) {maVanDon, trangThaiMoi}", "{received: true}", "200 / 401 / 404"],
+    ["POST", "/api/staff/login", "{email, matKhau}", "{token, vaiTro}", "200 / 401"],
+    ["GET", "/api/staff", "— (chỉ Admin)", "NhanVien[]", "200 / 403"],
+    ["POST", "/api/staff", "{hoTen, email, vaiTro} (chỉ Admin)", "NhanVien", "201 / 403"],
+    ["PATCH", "/api/staff/:id", "{hoTen?, vaiTro?, dangHoatDong?} (chỉ Admin)", "NhanVien", "200 / 403 / 404"],
     ["GET", "/api/reports/revenue", "— (query: thang, nam)", "{doanhThuBan, doanhThuThue}", "200"],
+    ["GET", "/api/reports/operations", "— (query: thang, nam)", "{tonKhoTheoTrangThai, donTheoTrangThai}", "200 / 403"],
 ], col_widths_cm=[1.8, 3.6, 4.4, 3.6, 2.6])
 
 # ===========================================================================
@@ -414,6 +438,16 @@ class SanPhamController {
   +layDanhSach(filter) : SanPham[]
   +layChiTiet(id) : SanPham
 }
+class GioHangController {
+  +xemGioHang() : GioHang
+  +themSanPham(sanPhamId, soLuong) : GioHang
+  +suaSoLuong(sanPhamId, soLuong) : GioHang
+  +xoaSanPham(sanPhamId) : GioHang
+}
+class DonMuaController {
+  +taoDonMua(dto) : DonHang
+  +huyDon(id) : DonHang
+}
 class DonThueController {
   +taoDonThue(dto) : DonHang
   +xacNhanDon(id, nhanVienId) : DonHang
@@ -429,10 +463,35 @@ class GiaoVanController {
   +taoYeuCauGiaoVan(chiTietDonId, chieu, khuVuc) : GiaoVan
   +xuLyWebhookVanChuyen(payload) : void
 }
+class AuthController {
+  +dangKy(dto) : KhachHang
+  +dangNhap(email, matKhau) : token
+  +quenMatKhau(email) : void
+  +datLaiMatKhau(token, matKhauMoi) : void
+}
+class AdminController {
+  +dangNhapNoiBo(email, matKhau) : token
+  +taoNhanVien(dto) : NhanVien
+  +capNhatNhanVien(id, dto) : NhanVien
+  +layBaoCaoDoanhThu(thang, nam) : BaoCaoDoanhThu
+  +layBaoCaoVanHanh(thang, nam) : BaoCaoVanHanh
+}
 
 class SanPhamService {
   +layDanhSach(filter) : SanPham[]
   +kiemTraTonKho(sanPhamId, tuNgay, denNgay) : boolean
+  +kiemTraConHang(sanPhamId, soLuong) : boolean
+  +themSuaXoaSanPham(dto) : SanPham
+}
+class GioHangService {
+  +layGioHang(khachHangId) : GioHang
+  +themSanPham(khachHangId, sanPhamId, soLuong) : GioHang
+  +suaSoLuong(khachHangId, sanPhamId, soLuong) : GioHang
+  +xoaSanPham(khachHangId, sanPhamId) : GioHang
+}
+class DonMuaService {
+  +taoDonMua(khachHangId, hinhThucNhan, khuVucNhan) : DonHang
+  +huyDon(id) : void
 }
 class DonThueService {
   +taoDonThue(dto) : DonHang
@@ -460,14 +519,40 @@ class GiaoVanService {
   +taoYeuCauGiaoNhan(chiTietDonId, chieu, khuVuc) : GiaoVan
   +xuLyWebhook(payload) : void
 }
+class AuthService {
+  +dangKy(dto) : KhachHang
+  +xacThuc(email, matKhau) : KhachHang
+  +taoTokenDatLaiMatKhau(email) : String
+  +datLaiMatKhau(token, matKhauMoi) : void
+}
+class NhanVienService {
+  +xacThucNoiBo(email, matKhau) : NhanVien
+  +taoNhanVien(dto) : NhanVien
+  +capNhatNhanVien(id, dto) : NhanVien
+}
+class BaoCaoService {
+  +tinhDoanhThu(thang, nam) : BaoCaoDoanhThu
+  +tongHopTonKho() : Map
+  +tongHopDonTheoTrangThai() : Map
+}
 
 SanPhamController --> SanPhamService : gọi
+GioHangController --> GioHangService : gọi
+DonMuaController --> DonMuaService : gọi
+DonMuaController --> ThanhToanService : gọi
 DonThueController --> DonThueService : gọi
 DonThueController --> KhoService : gọi
 DonThueController --> CocService : gọi
 DonThueController --> GiaoVanService : gọi
 ThanhToanController --> ThanhToanService : gọi
 GiaoVanController --> GiaoVanService : gọi
+AuthController --> AuthService : gọi
+AdminController --> NhanVienService : gọi
+AdminController --> SanPhamService : gọi
+AdminController --> BaoCaoService : gọi
+GioHangService --> SanPhamService : gọi (kiểm tra còn hàng)
+DonMuaService --> GioHangService : gọi (chốt đơn từ giỏ hàng)
+DonMuaService --> SanPhamService : gọi (kiểm tra còn hàng)
 DonThueService --> CocService : gọi
 DonThueService --> GiaoVanService : gọi
 CocService --> GiaoVanService : gọi (tính chênh lệch ship)

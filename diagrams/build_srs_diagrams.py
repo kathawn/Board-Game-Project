@@ -43,12 +43,13 @@ def build():
         [
             (0.05, 0.02, 0.95, 0.09, "Header"),
             (0.05, 0.12, 0.5, 0.40, "Ảnh sản phẩm"),
-            (0.55, 0.12, 0.95, 0.26, "Tên, giá bán, giá thuê"),
+            (0.55, 0.12, 0.95, 0.26, "Tên, giá bán, giá thuê, điểm đánh giá trung bình (sao)"),
             (0.55, 0.28, 0.95, 0.40, "Chọn ngày thuê (từ - đến)"),
-            (0.55, 0.42, 0.95, 0.52, "Hình thức nhận hàng:\n( ) Tự đến lấy  ( ) Giao vận [khu vực]"),
+            (0.55, 0.42, 0.95, 0.52, "Địa chỉ nhận hàng (mặc định từ hồ sơ cá nhân)"),
             (0.55, 0.54, 0.95, 0.60, "[Nút: Thêm vào giỏ / Thuê ngay]"),
-            (0.05, 0.63, 0.95, 0.75, "Checklist linh kiện đi kèm"),
-            (0.05, 0.78, 0.95, 0.92, "Mô tả chi tiết sản phẩm"),
+            (0.05, 0.63, 0.95, 0.72, "Checklist linh kiện đi kèm"),
+            (0.05, 0.74, 0.95, 0.84, "Mô tả chi tiết sản phẩm"),
+            (0.05, 0.86, 0.95, 0.96, "Đánh giá & nhận xét của khách đã mua/thuê"),
         ],
         os.path.join(OUT, "srs_appA_wireframe_chitiet.png"), title="SCR-02 Chi tiết sản phẩm & Đặt thuê",
     )
@@ -66,12 +67,22 @@ def build():
         [
             (0.05, 0.02, 0.95, 0.09, "Header"),
             (0.1, 0.14, 0.9, 0.24, "Đơn thuê #... — Hạn trả: dd/mm/yyyy"),
-            (0.1, 0.30, 0.9, 0.42, "Hình thức trả hàng:\n( ) Tự mang ra quán  ( ) Gọi giao vận đến lấy"),
-            (0.1, 0.46, 0.9, 0.56, "Khu vực lấy hàng (nếu chọn giao vận) + Phí ship dự kiến"),
+            (0.1, 0.30, 0.9, 0.42, "Xác nhận địa chỉ lấy hàng trả\n(mặc định giống địa chỉ nhận)"),
+            (0.1, 0.46, 0.9, 0.56, "Đối tác giao vận tự động chọn theo khoảng cách + Phí ship dự kiến"),
             (0.1, 0.60, 0.9, 0.70, "[Nút: Xác nhận yêu cầu]"),
             (0.1, 0.74, 0.9, 0.86, "Trạng thái vận chuyển: Mã vận đơn, Đang lấy/Đã lấy"),
         ],
-        os.path.join(OUT, "srs_appA_wireframe_giaovan.png"), title="SCR-07 Yêu cầu giao vận lấy hàng trả",
+        os.path.join(OUT, "srs_appA_wireframe_giaovan.png"), title="SCR-07 Xác nhận địa chỉ nhận/trả hàng & yêu cầu giao vận",
+    )
+    dk.wireframe(
+        [
+            (0.05, 0.02, 0.95, 0.09, "Header"),
+            (0.05, 0.13, 0.95, 0.30, "Thông tin cá nhân: Họ tên, SĐT, Địa chỉ\n[Nút: Lưu thay đổi] [Nút: Đổi mật khẩu]"),
+            (0.05, 0.34, 0.95, 0.46, "Ví điện tử: Số dư hiện tại"),
+            (0.05, 0.50, 0.95, 0.60, "[Nút: Rút tiền về tài khoản ngân hàng]"),
+            (0.05, 0.64, 0.95, 0.92, "Lịch sử giao dịch ví (hoàn cọc, rút tiền, thanh toán)"),
+        ],
+        os.path.join(OUT, "srs_appA_wireframe_hoso_vi.png"), title="SCR-11 Thông tin cá nhân & Ví điện tử",
     )
 
     print("Da sinh xong cac hinh SRS vao", OUT)

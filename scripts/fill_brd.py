@@ -69,7 +69,7 @@ ds.table(doc, ["Thuật ngữ", "Giải thích"], [
     ["BRU (Business Rule)", "Quy tắc nghiệp vụ, mã hoá dạng BRU-xx."],
     ["Go-live", "Thời điểm hệ thống chính thức đưa vào vận hành thay thế quy trình thủ công."],
     ["KPI (Key Performance Indicator)", "Chỉ số đo lường mức đạt được của một mục tiêu kinh doanh."],
-    ["Staff", "Người dùng vai trò nhân viên kho/quầy."],
+    ["Staff", "Người dùng vai trò nhân viên kho/xử lý đơn hàng."],
 ], col_widths_cm=[5.5, 10.5])
 
 ds.heading(doc, "1.5. Cấu trúc tài liệu", level=2)
@@ -101,10 +101,10 @@ ds.para(doc,
     "kho, giúp tự động hoá việc kiểm tra tồn kho, tính tiền cọc/tiền thuê/tiền phạt theo quy tắc nghiệp vụ chuẩn "
     "hoá, và cung cấp checklist kiểm đếm linh kiện điện tử.")
 ds.para(doc,
-    "Lợi ích kỳ vọng: giảm tỷ lệ thất lạc linh kiện xuống 5%, tăng tỷ trọng đơn thuê online lên 60%, giảm thời "
-    "gian xử lý đơn xuống 3 phút, tăng 20% doanh thu cho thuê trong 12 tháng và loại bỏ khiếu nại sai lệch cọc "
-    "(chi tiết Chương 4). Tổng chi phí đầu tư ước tính 78.600.000 VNĐ, chi phí vận hành khoảng 10.200.000 VNĐ/năm, "
-    "thời gian hoàn vốn dự kiến khoảng 12,8 tháng (chi tiết Chương 9).")
+    "Lợi ích kỳ vọng: giảm tỷ lệ thất lạc linh kiện xuống 5%, tăng tỷ trọng đơn thuê khách tự đặt trực tiếp trên "
+    "website lên 90%, giảm thời gian xử lý đơn xuống 3 phút, tăng 20% doanh thu cho thuê trong 12 tháng và loại "
+    "bỏ khiếu nại sai lệch cọc (chi tiết Chương 4). Tổng chi phí đầu tư ước tính 78.600.000 VNĐ, chi phí vận hành "
+    "khoảng 10.200.000 VNĐ/năm, thời gian hoàn vốn dự kiến khoảng 12,8 tháng (chi tiết Chương 9).")
 ds.para(doc,
     "Thời gian triển khai dự kiến tối đa 6 tháng kể từ khi BRD được phê duyệt. Tài liệu này đề nghị Chủ đầu tư "
     "phê duyệt phạm vi và ngân sách tại Chương 12 để nhóm dự án tiếp tục xây dựng Tài liệu đặc tả yêu cầu phần mềm (SRS).")
@@ -130,7 +130,8 @@ ds.para(doc,
 
 ds.heading(doc, "3.3. Hiện trạng quy trình (As-Is)", level=2)
 ds.para(doc, "Quy trình thuê/trả board game hiện tại gồm các bước thủ công từ lúc khách hỏi tình trạng sản phẩm "
-             "đến lúc hoàn cọc, được mô tả tại Hình 3.1 (mã PlantUML, tác giả tự vẽ lại bằng draw.io).")
+             "đến lúc hoàn cọc; toàn bộ giao dịch diễn ra qua điện thoại/Zalo và giao nhận tại nhà khách (cửa "
+             "hàng không có quầy tiếp khách trực tiếp), được mô tả tại Hình 3.1 (mã PlantUML, tác giả tự vẽ lại bằng draw.io).")
 ds.code_block(doc, """@startuml
 start
 :Khách hỏi tình trạng game qua điện thoại/Zalo;
@@ -139,17 +140,18 @@ if (Còn hàng đúng ngày khách cần?) then (Không)
   :Báo khách hết hàng / hẹn lại;
   stop
 else (Có)
-  :Khách đến quầy, chọn game, nộp cọc tiền mặt;
+  :Nhân viên ghi tay thông tin thuê, hẹn người quen/xe ôm mang game đến giao cho khách;
 endif
+:Khách chuyển khoản/đưa tiền mặt cọc cho người giao hàng, không có mã tra cứu;
 :Nhân viên ghi tay thông tin thuê và số cọc vào sổ;
-:Giao game cho khách, khách mang về sử dụng;
-:Khách mang trả game đúng/trễ hạn;
+:Khách sử dụng game tại nhà;
+:Đến hạn, nhân viên hẹn người mang đi lấy lại game đúng/trễ hạn;
 :Nhân viên kiểm đếm linh kiện bằng mắt, không checklist;
 if (Đủ linh kiện, đúng hạn?) then (Không)
   :Ghi biên bản đền bù / phạt trễ hạn bằng tay;
 else (Có / sau khi đền bù)
 endif
-:Hoàn cọc còn lại bằng tiền mặt, không có phiếu xác nhận;
+:Hoàn cọc còn lại bằng chuyển khoản/tiền mặt, không có phiếu xác nhận;
 stop
 @enduml""")
 ds.caption(doc, "Hình 3.1 – Quy trình thuê/trả board game hiện tại (As-Is)")
@@ -229,7 +231,7 @@ ds.table(doc, ["Bên liên quan", "Trong/Ngoài tổ chức", "Mối quan tâm"]
           pd.STAKEHOLDERS, col_widths_cm=[4.5, 3.0, 7.5])
 
 ds.heading(doc, "6.2. Vai trò và trách nhiệm (RACI)", level=2)
-ds.table(doc, ["Hoạt động / Sản phẩm bàn giao", "Chủ đầu tư", "Quản lý vận hành", "Nhân viên kho/quầy", "BA (tác giả)", "PM / Dev / Designer"], [
+ds.table(doc, ["Hoạt động / Sản phẩm bàn giao", "Chủ đầu tư", "Quản lý vận hành", "Nhân viên kho/xử lý đơn hàng", "BA (tác giả)", "PM / Dev / Designer"], [
     ["Phê duyệt BRD", "A", "C", "I", "R", "I"],
     ["Xác nhận quy trình nghiệp vụ (As-Is/To-Be)", "I", "A", "C", "R", "I"],
     ["Xây dựng Business Rules Catalog", "C", "A", "C", "R", "I"],
@@ -269,9 +271,9 @@ else (Có)
   :Khách đặt thuê & thanh toán cọc online (BRU-01);
 endif
 :Hệ thống tự tính tiền thuê theo biểu giá lũy tiến (BRU-02);
-:Nhân viên xác nhận đơn và xuất kho trên hệ thống;
+:Nhân viên xác nhận đơn và bàn giao cho đối tác giao vận mang đến tận nơi cho khách;
 :Hệ thống tự nhắc hạn trả trước ngày hết hạn (BR-06);
-:Khách trả hàng, nhân viên kiểm đếm theo checklist điện tử;
+:Đối tác giao vận đến lấy hàng trả, nhân viên kiểm đếm theo checklist điện tử khi hàng về kho;
 if (Đủ linh kiện, đúng hạn?) then (Không)
   :Hệ thống tự tính phạt trễ hạn/đền bù (BRU-03, BRU-04);
 else (Có / sau khi tính phạt)
@@ -411,7 +413,7 @@ ds.table(doc, ["Vai trò", "Số lượng", "Ghi chú"], [
 
 ds.heading(doc, "11.3. Quản lý thay đổi và truyền thông", level=2)
 ds.para(doc, "Áp dụng chiến lược giao tiếp theo từng nhóm bên liên quan (Chương 6): báo cáo tiến độ hàng tuần cho "
-             "Chủ đầu tư/Quản lý vận hành; tổ chức 1 buổi đào tạo trực tiếp cho nhân viên kho/quầy trước go-live; "
+             "Chủ đầu tư/Quản lý vận hành; tổ chức 1 buổi đào tạo trực tiếp cho nhân viên kho/xử lý đơn hàng trước go-live; "
              "thông báo thay đổi chính sách giá cho khách qua trang web.")
 
 # ===========================================================================
@@ -423,10 +425,10 @@ ds.heading(doc, "12.1. Tiêu chí nghiệm thu", level=2)
 ds.table(doc, ["Tiêu chí", "BR/KPI liên quan", "Người nghiệm thu"], [
     ["Hệ thống tính đúng tiền cọc/thuê/phạt theo BRU-01..04 trên tối thiểu 10 kịch bản kiểm thử", "BR-02, BR-04", "Quản lý vận hành"],
     ["Hệ thống chặn được 100% các lượt đặt thuê trùng lịch trong kiểm thử", "BR-05", "Quản lý vận hành"],
-    ["Checklist kiểm đếm linh kiện khả dụng cho toàn bộ 5 tựa game mẫu", "BR-03", "Nhân viên kho/quầy"],
-    ["Hệ thống tính đúng phí giao vận theo khu vực (BRU-05) và số tiền cọc có cộng ship (BRU-01) trên tối thiểu 6 kịch bản kiểm thử", "BR-09", "Quản lý vận hành"],
+    ["Checklist kiểm đếm linh kiện khả dụng cho toàn bộ 5 tựa game mẫu", "BR-03", "Nhân viên kho/xử lý đơn hàng"],
+    ["Hệ thống tính đúng phí giao vận theo khoảng cách và chọn đúng đối tác theo bán kính 20km (BRU-05), số tiền cọc có cộng ship (BRU-01) trên tối thiểu 6 kịch bản kiểm thử", "BR-09", "Quản lý vận hành"],
     ["Hệ thống chỉ xác nhận đơn đã thanh toán sau khi nhận webhook thành công từ cổng thanh toán giả định (BRU-06)", "BR-10", "Quản lý vận hành"],
-    ["Thời gian xử lý 1 đơn thuê mẫu tại quầy ≤ 3 phút", "BO-03 / KPI tương ứng", "Quản lý vận hành"],
+    ["Thời gian xử lý 1 đơn thuê mẫu từ lúc khách đặt đến lúc nhân viên xác nhận ≤ 3 phút", "BO-03 / KPI tương ứng", "Quản lý vận hành"],
 ], col_widths_cm=[7.5, 3.5, 4.0])
 
 ds.heading(doc, "12.2. Quy trình thay đổi yêu cầu", level=2)

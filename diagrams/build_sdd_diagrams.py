@@ -31,9 +31,11 @@ def build():
             (None, "Giỏ hàng /\nThanh toán (SCR-03)"),
             (None, "Thanh toán\nmã QR (SCR-06)"),
             (None, "Giao vận lấy hàng\ntrả (SCR-07)"),
-            (None, "Đăng nhập /\nĐăng ký"),
+            (None, "Đăng nhập / Đăng ký /\nQuên mật khẩu (SCR-10)"),
+            (None, "Đăng nhập nội bộ\nStaff/Admin (SCR-08)"),
             (None, "POS nội bộ:\nKho (SCR-04)"),
             (None, "POS nội bộ:\nBáo cáo (SCR-05)"),
+            (None, "Admin:\nTài khoản NV (SCR-09)"),
         ],
         os.path.join(OUT, "sdd_sitemap.png"), title="Hình 2 – Sitemap tổng thể", width=1180,
     )
@@ -54,11 +56,11 @@ def build():
 
     dk.wireframe(
         [
-            (0.05, 0.03, 0.95, 0.10, "Header: Giỏ hàng"),
-            (0.05, 0.13, 0.95, 0.45, "Danh sách sản phẩm đã chọn: tên, ngày thuê/mua, đơn giá, phí ship dự kiến"),
-            (0.05, 0.48, 0.95, 0.62, "Tổng tiền hàng + Tổng tiền cọc (nếu có thuê)"),
-            (0.05, 0.65, 0.95, 0.78, "Chọn hình thức nhận hàng\n( ) Tự đến lấy  ( ) Giao vận [khu vực]"),
-            (0.05, 0.81, 0.95, 0.92, "[Nút: Tiến hành thanh toán → SCR-06]"),
+            (0.05, 0.03, 0.95, 0.10, "Header: Giỏ hàng (chỉ sản phẩm mua)"),
+            (0.05, 0.13, 0.95, 0.46, "Danh sách sản phẩm trong giỏ: tên, đơn giá, số lượng [-][+], [Xoá] — nhiều dòng"),
+            (0.05, 0.49, 0.95, 0.60, "Tổng tiền hàng + phí ship dự kiến (cập nhật theo số lượng)"),
+            (0.05, 0.63, 0.95, 0.76, "Chọn hình thức nhận hàng\n( ) Tự đến lấy  ( ) Giao vận [khu vực]"),
+            (0.05, 0.79, 0.95, 0.92, "[Nút: Tiến hành thanh toán → SCR-06]"),
         ],
         os.path.join(OUT, "sdd_wireframe_cart.png"), title="SCR-03 Giỏ hàng / Thanh toán", width=560, height=420,
     )
@@ -81,6 +83,36 @@ def build():
             (0.05, 0.48, 0.95, 0.90, "Bảng chi tiết giao dịch trong tháng"),
         ],
         os.path.join(OUT, "sdd_wireframe_report.png"), title="SCR-05 Báo cáo doanh thu (Admin)", width=560, height=420,
+    )
+
+    dk.wireframe(
+        [
+            (0.05, 0.03, 0.95, 0.10, "Header: Quên mật khẩu"),
+            (0.05, 0.16, 0.95, 0.38, "Nhập địa chỉ email đã đăng ký"),
+            (0.05, 0.42, 0.95, 0.60, "[Nút: Gửi email đặt lại mật khẩu]"),
+            (0.05, 0.64, 0.95, 0.90, "Thông báo: Đường dẫn đặt lại mật khẩu đã gửi, hiệu lực 30 phút"),
+        ],
+        os.path.join(OUT, "sdd_wireframe_forgot_password.png"), title="SCR-10 Quên / đặt lại mật khẩu", width=560, height=360,
+    )
+
+    dk.wireframe(
+        [
+            (0.05, 0.03, 0.95, 0.12, "Header: Đăng nhập nội bộ (Staff/Admin)"),
+            (0.05, 0.18, 0.95, 0.38, "Email"),
+            (0.05, 0.42, 0.95, 0.62, "Mật khẩu"),
+            (0.05, 0.66, 0.95, 0.85, "[Nút: Đăng nhập] — riêng biệt với tài khoản Customer"),
+        ],
+        os.path.join(OUT, "sdd_wireframe_staff_login.png"), title="SCR-08 Đăng nhập nội bộ (Staff/Admin)", width=560, height=360,
+    )
+
+    dk.wireframe(
+        [
+            (0.05, 0.03, 0.95, 0.10, "Header Admin: Quản lý tài khoản nhân viên"),
+            (0.05, 0.14, 0.95, 0.20, "[Nút: Thêm nhân viên]"),
+            (0.05, 0.24, 0.95, 0.70, "Bảng: Họ tên | Email | Vai trò (Staff/Admin) | Trạng thái | [Sửa] [Khoá/Mở khoá]"),
+            (0.05, 0.74, 0.95, 0.92, "Form thêm/sửa: Họ tên, Email, Vai trò, Trạng thái hoạt động"),
+        ],
+        os.path.join(OUT, "sdd_wireframe_staff_admin.png"), title="SCR-09 Quản lý tài khoản nhân viên", width=560, height=420,
     )
 
     # Design Class Diagram v2 nay trinh bay bang code PlantUML text truc tiep trong
