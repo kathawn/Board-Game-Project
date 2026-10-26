@@ -1,8 +1,15 @@
 import Image from "next/image";
+import Link from "next/link";
 import type { Product } from "@/lib/products";
 import { formatVND } from "@/lib/products";
 
-export function ProductCard({ product }: { product: Product }) {
+export function ProductCard({
+  product,
+  trangThai = "ban",
+}: {
+  product: Product;
+  trangThai?: "ban" | "thue";
+}) {
   return (
     <article className="overflow-hidden rounded bg-card shadow-[0_20px_40px_-20px_rgba(42,31,26,0.2)] transition-all duration-400 hover:-translate-y-1.5 hover:shadow-[0_30px_50px_-18px_rgba(42,31,26,0.3)]">
       <div className="relative h-48 w-full">
@@ -27,9 +34,12 @@ export function ProductCard({ product }: { product: Product }) {
             {formatVND(product.giaNiemYet)}
           </span>
         </div>
-        <button className="w-full border border-ink/25 py-3 text-xs font-semibold uppercase tracking-wider transition-colors hover:bg-ink hover:text-cream">
+        <Link
+          href={`/products/${product.slug}?loai=${trangThai}`}
+          className="block w-full border border-ink/25 py-3 text-center text-xs font-semibold uppercase tracking-wider transition-colors hover:bg-ink hover:text-cream"
+        >
           Xem chi tiết
-        </button>
+        </Link>
       </div>
     </article>
   );

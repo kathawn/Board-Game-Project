@@ -166,7 +166,7 @@ export default function ProductsPage() {
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
               {filtered.map((product, i) => (
                 <Reveal key={product.slug} delay={(i % 4) * 60}>
-                  <ProductCard product={product} />
+                  <ProductCard product={product} trangThai={trangThai} />
                   {trangThai === "thue" && (
                     <p className="mt-2 text-center text-xs text-ink-soft">
                       Từ {formatVND(giaThueNgayDau(product.giaNiemYet))}/ngày
