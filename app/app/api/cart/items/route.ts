@@ -1,10 +1,11 @@
-import { resolveSessionEmail } from "@/lib/auth/resolveSession";
+import { getSessionEmail } from "@/lib/auth/request";
+import { sessionStore } from "@/lib/auth/server";
 import { cartStore, serializeCart } from "@/lib/cart/server";
 import { checkStock, getProductBySlug } from "@/lib/products";
 
 /** FR-BH-08: thêm sản phẩm (hoặc tăng số lượng nếu đã có) vào giỏ mua; số lượng không vượt quá tồn kho Available. */
 export async function POST(request: Request) {
-  const email = resolveSessionEmail(request);
+  const email = getSessionEmail(request, sessionStore);
   if (!email) {
     return Response.json({ error: "Vui lòng đăng nhập." }, { status: 401 });
   }

@@ -13,6 +13,7 @@ export default function LoginPage() {
   const router = useRouter();
   const [mode, setMode] = useState<Mode>("login");
   const [showPassword, setShowPassword] = useState(false);
+  const [hoTen, setHoTen] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -27,7 +28,7 @@ export default function LoginPage() {
       const response = await fetch(`/api/auth/${mode}`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify(mode === "register" ? { email, password, hoTen } : { email, password }),
       });
       const data = await response.json();
 
@@ -95,6 +96,8 @@ export default function LoginPage() {
                   type="text"
                   placeholder="Họ và tên"
                   required
+                  value={hoTen}
+                  onChange={(e) => setHoTen(e.target.value)}
                   className="w-full rounded border border-ink/18 bg-cream py-3.5 pl-11 pr-4 text-sm text-ink focus:border-wine focus:outline-none"
                 />
               </div>

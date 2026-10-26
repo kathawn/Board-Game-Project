@@ -4,9 +4,28 @@ import type { SessionStore } from "./session";
 
 export type AuthResult = { ok: true; token: string } | { ok: false; error: string };
 
+export type Profile = { email: string; hoTen: string; sdt: string; diaChi: string };
+
+export type UpdateProfileResult =
+  | { ok: true; profile: Profile }
+  | { ok: false; error: string };
+
+export type GetProfileResult = { ok: true; profile: Profile } | { ok: false; error: string };
+
+export type ChangePasswordResult = { ok: true } | { ok: false; error: string };
+
 export type AuthService = {
-  register(input: { email: string; password: string }): Promise<AuthResult>;
+  register(input: { email: string; password: string; hoTen?: string }): Promise<AuthResult>;
   login(input: { email: string; password: string }): Promise<AuthResult>;
+  getProfile(email: string): Promise<GetProfileResult>;
+  updateProfile(
+    email: string,
+    input: { hoTen: string; sdt: string; diaChi: string }
+  ): Promise<UpdateProfileResult>;
+  changePassword(
+    email: string,
+    input: { oldPassword: string; newPassword: string }
+  ): Promise<ChangePasswordResult>;
 };
 
 function hashPassword(password: string): string {
@@ -35,7 +54,7 @@ export function createAuthService(
   now: () => number = Date.now
 ): AuthService {
   return {
-    async register({ email, password }) {
+    async register({ email, password, hoTen }) {
       const normalizedEmail = normalizeEmail(email);
       if (store.get(normalizedEmail)) {
         return { ok: false, error: "Email đã được sử dụng." };
@@ -46,6 +65,9 @@ export function createAuthService(
         passwordHash: hashPassword(password),
         failedAttempts: 0,
         lockedUntil: null,
+        hoTen: hoTen ?? "",
+        sdt: "",
+        diaChi: "",
       });
       return { ok: true, token: sessions.create(normalizedEmail) };
     },
@@ -73,6 +95,50 @@ export function createAuthService(
 
       store.save({ ...account, failedAttempts: 0, lockedUntil: null });
       return { ok: true, token: sessions.create(normalizedEmail) };
+    },
+
+    async getProfile(email) {
+      const normalizedEmail = normalizeEmail(email);
+      const account = store.get(normalizedEmail);
+      if (!account) {
+        return { ok: false, error: "Không tìm thấy tài khoản." };
+      }
+
+      return {
+        ok: true,
+        profile: {
+          email: normalizedEmail,
+          hoTen: account.hoTen,
+          sdt: account.sdt,
+          diaChi: account.diaChi,
+        },
+      };
+    },
+
+    async updateProfile(email, { hoTen, sdt, diaChi }) {
+      const normalizedEmail = normalizeEmail(email);
+      const account = store.get(normalizedEmail);
+      if (!account) {
+        return { ok: false, error: "Không tìm thấy tài khoản." };
+      }
+
+      store.save({ ...account, hoTen, sdt, diaChi });
+      return { ok: true, profile: { email: normalizedEmail, hoTen, sdt, diaChi } };
+    },
+
+    async changePassword(email, { oldPassword, newPassword }) {
+      const normalizedEmail = normalizeEmail(email);
+      const account = store.get(normalizedEmail);
+      if (!account) {
+        return { ok: false, error: "Không tìm thấy tài khoản." };
+      }
+
+      if (!verifyPassword(oldPassword, account.passwordHash)) {
+        return { ok: false, error: "Mật khẩu hiện tại không đúng." };
+      }
+
+      store.save({ ...account, passwordHash: hashPassword(newPassword) });
+      return { ok: true };
     },
   };
 }

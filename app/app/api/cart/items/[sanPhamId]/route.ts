@@ -1,4 +1,5 @@
-import { resolveSessionEmail } from "@/lib/auth/resolveSession";
+import { getSessionEmail } from "@/lib/auth/request";
+import { sessionStore } from "@/lib/auth/server";
 import { cartStore, serializeCart } from "@/lib/cart/server";
 import { checkStock, getProductBySlug } from "@/lib/products";
 
@@ -7,7 +8,7 @@ export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ sanPhamId: string }> },
 ) {
-  const email = resolveSessionEmail(request);
+  const email = getSessionEmail(request, sessionStore);
   if (!email) {
     return Response.json({ error: "Vui lòng đăng nhập." }, { status: 401 });
   }
@@ -35,7 +36,7 @@ export async function DELETE(
   request: Request,
   { params }: { params: Promise<{ sanPhamId: string }> },
 ) {
-  const email = resolveSessionEmail(request);
+  const email = getSessionEmail(request, sessionStore);
   if (!email) {
     return Response.json({ error: "Vui lòng đăng nhập." }, { status: 401 });
   }

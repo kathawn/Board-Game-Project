@@ -3,6 +3,7 @@ import { randomBytes } from "node:crypto";
 export interface SessionStore {
   create(email: string): string;
   resolve(token: string): string | undefined;
+  revoke(token: string): void;
 }
 
 export function createSessionStore(): SessionStore {
@@ -16,6 +17,9 @@ export function createSessionStore(): SessionStore {
     },
     resolve(token) {
       return sessions.get(token);
+    },
+    revoke(token) {
+      sessions.delete(token);
     },
   };
 }

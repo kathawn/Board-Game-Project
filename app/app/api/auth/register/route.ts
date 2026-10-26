@@ -1,8 +1,8 @@
 import { authService } from "@/lib/auth/server";
 
 export async function POST(request: Request) {
-  const { email, password } = await request.json();
-  const result = await authService.register({ email, password });
+  const { email, password, hoTen } = await request.json();
+  const result = await authService.register({ email, password, hoTen });
 
   if (!result.ok) {
     return Response.json({ error: result.error }, { status: 409 });
