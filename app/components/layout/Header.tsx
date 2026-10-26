@@ -54,6 +54,13 @@ export function Header() {
             <ShoppingCart className="h-5 w-5" />
           </Link>
           <Link
+            href="/profile"
+            className="text-ink"
+            aria-label="Hồ sơ cá nhân"
+          >
+            <User className="h-5 w-5" />
+          </Link>
+          <Link
             href="/login"
             className="flex items-center gap-2 border border-ink px-5 py-2.5 text-xs font-semibold uppercase tracking-wider transition-colors hover:bg-ink hover:text-cream"
           >
