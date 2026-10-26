@@ -29,6 +29,17 @@ describe("register", () => {
     }
   });
 
+  test("saves the hoTen provided at registration so it shows up in the profile", async () => {
+    await auth.register({ email: "an@example.com", password: "matkhau123", hoTen: "Nguyễn Thị An" });
+
+    const profile = await auth.getProfile("an@example.com");
+
+    expect(profile).toEqual({
+      ok: true,
+      profile: { email: "an@example.com", hoTen: "Nguyễn Thị An", sdt: "", diaChi: "" },
+    });
+  });
+
   test("rejects registering an email that is already in use", async () => {
     await auth.register({ email: "an@example.com", password: "matkhau123" });
 

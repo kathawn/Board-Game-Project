@@ -1,11 +1,15 @@
 import type { SessionStore } from "./session";
 
-export function getSessionEmail(request: Request, sessions: SessionStore): string | undefined {
+export function getSessionToken(request: Request): string | undefined {
   const cookieHeader = request.headers.get("cookie");
   if (!cookieHeader) return undefined;
 
-  const match = cookieHeader.match(/(?:^|;\s*)session=([^;]+)/);
-  if (!match) return undefined;
+  return cookieHeader.match(/(?:^|;\s*)session=([^;]+)/)?.[1];
+}
 
-  return sessions.resolve(match[1]);
+export function getSessionEmail(request: Request, sessions: SessionStore): string | undefined {
+  const token = getSessionToken(request);
+  if (!token) return undefined;
+
+  return sessions.resolve(token);
 }

@@ -20,6 +20,24 @@ describe("POST /api/auth/register", () => {
     expect(response.headers.get("set-cookie")).toContain("session=");
   });
 
+  test("saves the submitted hoTen so it appears in the new account's profile", async () => {
+    const { POST } = await import("./route");
+    const request = new Request("http://localhost/api/auth/register", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ email: "an@example.com", password: "matkhau123", hoTen: "Nguyễn Thị An" }),
+    });
+
+    await POST(request);
+
+    const { authService } = await import("@/lib/auth/server");
+    const profile = await authService.getProfile("an@example.com");
+    expect(profile).toEqual({
+      ok: true,
+      profile: { email: "an@example.com", hoTen: "Nguyễn Thị An", sdt: "", diaChi: "" },
+    });
+  });
+
   test("returns 409 when the email is already registered", async () => {
     const { POST } = await import("./route");
     const makeRequest = () =>

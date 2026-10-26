@@ -15,7 +15,7 @@ export type GetProfileResult = { ok: true; profile: Profile } | { ok: false; err
 export type ChangePasswordResult = { ok: true } | { ok: false; error: string };
 
 export type AuthService = {
-  register(input: { email: string; password: string }): Promise<AuthResult>;
+  register(input: { email: string; password: string; hoTen?: string }): Promise<AuthResult>;
   login(input: { email: string; password: string }): Promise<AuthResult>;
   getProfile(email: string): Promise<GetProfileResult>;
   updateProfile(
@@ -54,7 +54,7 @@ export function createAuthService(
   now: () => number = Date.now
 ): AuthService {
   return {
-    async register({ email, password }) {
+    async register({ email, password, hoTen }) {
       const normalizedEmail = normalizeEmail(email);
       if (store.get(normalizedEmail)) {
         return { ok: false, error: "Email đã được sử dụng." };
@@ -65,7 +65,7 @@ export function createAuthService(
         passwordHash: hashPassword(password),
         failedAttempts: 0,
         lockedUntil: null,
-        hoTen: "",
+        hoTen: hoTen ?? "",
         sdt: "",
         diaChi: "",
       });

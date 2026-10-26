@@ -1,8 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { ShoppingCart, User } from "lucide-react";
+import { Menu as MenuPrimitive } from "@base-ui/react/menu";
+import { ShoppingCart, User, Settings, LogOut } from "lucide-react";
 
 const NAV_LINKS = [
   { href: "/products", label: "Bộ sưu tập" },
@@ -12,13 +14,28 @@ const NAV_LINKS = [
 ];
 
 export function Header() {
+  const router = useRouter();
   const [scrolled, setScrolled] = useState(false);
+  const [loggedIn, setLoggedIn] = useState<boolean | null>(null);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 40);
     window.addEventListener("scroll", onScroll);
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
+
+  useEffect(() => {
+    fetch("/api/profile")
+      .then((response) => setLoggedIn(response.ok))
+      .catch(() => setLoggedIn(false));
+  }, []);
+
+  const handleLogout = async () => {
+    await fetch("/api/auth/logout", { method: "POST" });
+    setLoggedIn(false);
+    router.push("/");
+    router.refresh();
+  };
 
   return (
     <header
@@ -53,20 +70,52 @@ export function Header() {
           >
             <ShoppingCart className="h-5 w-5" />
           </Link>
-          <Link
-            href="/profile"
-            className="text-ink"
-            aria-label="Hồ sơ cá nhân"
-          >
-            <User className="h-5 w-5" />
-          </Link>
-          <Link
-            href="/login"
-            className="flex items-center gap-2 border border-ink px-5 py-2.5 text-xs font-semibold uppercase tracking-wider transition-colors hover:bg-ink hover:text-cream"
-          >
-            <User className="h-3.5 w-3.5" />
-            Đăng nhập
-          </Link>
+          {loggedIn ? (
+            <MenuPrimitive.Root>
+              <MenuPrimitive.Trigger
+                className="text-ink"
+                aria-label="Tài khoản"
+              >
+                <User className="h-5 w-5" />
+              </MenuPrimitive.Trigger>
+              <MenuPrimitive.Portal>
+                <MenuPrimitive.Positioner align="end" sideOffset={10}>
+                  <MenuPrimitive.Popup className="min-w-[200px] rounded border border-ink/12 bg-paper py-2 shadow-[0_20px_40px_-20px_rgba(42,31,26,0.3)]">
+                    <MenuPrimitive.Item
+                      render={<Link href="/profile" />}
+                      className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-ink data-[highlighted]:bg-cream"
+                    >
+                      <User className="h-4 w-4" />
+                      Hồ sơ cá nhân
+                    </MenuPrimitive.Item>
+                    <MenuPrimitive.Item
+                      render={<Link href="/account" />}
+                      className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-ink data-[highlighted]:bg-cream"
+                    >
+                      <Settings className="h-4 w-4" />
+                      Cài đặt tài khoản
+                    </MenuPrimitive.Item>
+                    <MenuPrimitive.Separator className="my-2 h-px bg-ink/12" />
+                    <MenuPrimitive.Item
+                      onClick={handleLogout}
+                      className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-wine data-[highlighted]:bg-cream"
+                    >
+                      <LogOut className="h-4 w-4" />
+                      Đăng xuất
+                    </MenuPrimitive.Item>
+                  </MenuPrimitive.Popup>
+                </MenuPrimitive.Positioner>
+              </MenuPrimitive.Portal>
+            </MenuPrimitive.Root>
+          ) : (
+            <Link
+              href="/login"
+              className="flex items-center gap-2 border border-ink px-5 py-2.5 text-xs font-semibold uppercase tracking-wider transition-colors hover:bg-ink hover:text-cream"
+            >
+              <User className="h-3.5 w-3.5" />
+              Đăng nhập
+            </Link>
+          )}
         </div>
       </div>
     </header>
