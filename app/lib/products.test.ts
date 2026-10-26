@@ -1,5 +1,5 @@
 import { describe, test, expect } from "vitest";
-import { checkStock, filterProducts, PRODUCTS } from "./products";
+import { checkStock, filterProducts, getProductBySlug, PRODUCTS } from "./products";
 
 describe("filterProducts (FR-BH-02)", () => {
   test("returns all products when no filter is given", () => {
@@ -50,6 +50,21 @@ describe("filterProducts (FR-BH-02)", () => {
     const result = filterProducts(PRODUCTS, { q: "khong-ton-tai" });
 
     expect(result).toEqual([]);
+  });
+});
+
+describe("getProductBySlug (FR-BH-03)", () => {
+  test("returns the product with a full linhKien checklist when the slug exists", () => {
+    const result = getProductBySlug("catan");
+
+    expect(result?.slug).toBe("catan");
+    expect(result?.linhKien).toEqual(PRODUCTS.find((p) => p.slug === "catan")?.linhKien);
+  });
+
+  test("returns undefined when no product matches the slug", () => {
+    const result = getProductBySlug("khong-ton-tai");
+
+    expect(result).toBeUndefined();
   });
 });
 

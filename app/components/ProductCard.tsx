@@ -1,8 +1,15 @@
 import Image from "next/image";
+import Link from "next/link";
 import type { Product } from "@/lib/products";
 import { formatVND } from "@/lib/products";
 
-export function ProductCard({ product }: { product: Product }) {
+export function ProductCard({
+  product,
+  trangThai = "ban",
+}: {
+  product: Product;
+  trangThai?: "ban" | "thue";
+}) {
   const conHang = product.soLuongTon > 0;
 
   return (
@@ -34,13 +41,22 @@ export function ProductCard({ product }: { product: Product }) {
             {formatVND(product.giaNiemYet)}
           </span>
         </div>
-        <button
-          disabled={!conHang}
-          title={conHang ? undefined : "Sản phẩm đã hết hàng, không thể thêm vào giỏ hoặc đặt mua."}
-          className="w-full border border-ink/25 py-3 text-xs font-semibold uppercase tracking-wider transition-colors hover:bg-ink hover:text-cream disabled:cursor-not-allowed disabled:border-ink/10 disabled:bg-ink/5 disabled:text-ink-soft disabled:hover:bg-ink/5 disabled:hover:text-ink-soft"
-        >
-          {conHang ? "Xem chi tiết" : "Hết hàng"}
-        </button>
+        {conHang ? (
+          <Link
+            href={`/products/${product.slug}?loai=${trangThai}`}
+            className="block w-full border border-ink/25 py-3 text-center text-xs font-semibold uppercase tracking-wider transition-colors hover:bg-ink hover:text-cream"
+          >
+            Xem chi tiết
+          </Link>
+        ) : (
+          <button
+            disabled
+            title="Sản phẩm đã hết hàng, không thể thêm vào giỏ hoặc đặt mua."
+            className="w-full cursor-not-allowed border border-ink/10 bg-ink/5 py-3 text-xs font-semibold uppercase tracking-wider text-ink-soft"
+          >
+            Hết hàng
+          </button>
+        )}
       </div>
     </article>
   );
