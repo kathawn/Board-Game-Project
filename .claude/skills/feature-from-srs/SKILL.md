@@ -9,11 +9,19 @@ description: Use when implementing a new feature in a repo that already has an S
 
 This is the top-level orchestrator for taking one spec-described feature from
 "not started" to "merged, with a human having approved it twice." It does not
-do any of the work itself — it sequences five existing skills/tools in the
+do any of the work itself — it sequences the existing skills/tools in the
 right order and enforces the two points where a human must explicitly sign
 off before the flow is allowed to continue. Skipping the sequencing (e.g.
 starting backend work before a mockup exists, or merging without asking) is
 the failure mode this skill exists to prevent.
+
+**Fast-track mode (current default for this project):** to ship features fast
+for a CV deadline, this flow is deliberately trimmed — no unit-test-driven
+development, no written acceptance-test suite, no automated screenshots. The
+human does their own manual testing in the browser and that is what decides
+whether a feature works. What's still kept: both human-approval gates
+(mockup, merge) and the domain-expert business-rule review — those are the
+cheap, high-value checks and the ones this project explicitly asked to keep.
 
 ## When to Use
 
@@ -32,11 +40,10 @@ arc, not a fragment of it.
 | 0. Branch | `git checkout -b feature/<slug>` from `main` | this skill |
 | 1. Spec → mockup → Gate 1 | find the SRS excerpt, build the mockup, start the dev server, hand off for approval | **REQUIRED SUB-SKILL:** `spec-driven-mockup` (internally also uses `run` and `ui-mockup-approval-gate`) |
 | 2. — | *(no separate action — Gate 1 happens inside step 1; see note below)* | `spec-driven-mockup` / `ui-mockup-approval-gate` |
-| 3. Backend (TDD) | implement the backend per the step-1 spec excerpt | **REQUIRED SUB-SKILL:** `superpowers:test-driven-development` |
+| 3. Backend | implement the backend per the step-1 spec excerpt — direct implementation, no TDD, no unit-test suite | this skill |
 | 4. Domain-expert review | review the step-3 diff against the step-1 excerpt for business-rule conformance | **REQUIRED SUB-SKILL:** `domain-expert-code-review` |
-| 5. Acceptance tests | write/run integration tests exercising the full UC/FR flow | this skill (plain test-writing, not a sub-skill) |
-| 6. Screenshots | (re)start the dev server, capture the finished feature | **REQUIRED SUB-SKILL:** `run`, then Playwright |
-| 7. Gate 2 (merge) | commit, ask the human, merge only on explicit approval | this skill |
+| 5. Manual test handoff | start the dev server, tell the human what to click through; human's manual pass is the completion signal | **REQUIRED SUB-SKILL:** `run` |
+| 6. Gate 2 (merge) | commit, ask the human, merge only on explicit approval | this skill |
 
 ## Progress Checklist
 
@@ -52,20 +59,18 @@ blocks, or a step has to re-run after a fix:
 - [ ] 0. Branch created (feature/<slug>)
 - [ ] 1. Spec excerpt found + mockup built (spec-driven-mockup)
 - [ ] Gate 1 — mockup approved by human
-- [ ] 3. Backend implemented (TDD)
+- [ ] 3. Backend implemented
 - [ ] 4. Domain-expert review done (no business-rule findings open)
-- [ ] 5. Acceptance tests written and passing
-- [ ] 6. Screenshots captured
+- [ ] 5. Dev server running, handed off for manual testing
 - [ ] Gate 2 — merge approved by human
 ```
 
 Rules for keeping it honest:
-- Check a box only when that step has actually finished (tests green, gate
-  explicitly approved, etc.) — not when you've started it or intend to do it
-  next.
-- If step 4 produces a business-rule finding, uncheck step 3 and step 5 (if
-  already checked) until the fix is in and both suites are re-run green —
-  don't leave stale checks from before the fix.
+- Check a box only when that step has actually finished (gate explicitly
+  approved, etc.) — not when you've started it or intend to do it next.
+- If step 4 produces a business-rule finding, uncheck step 3 (if already
+  checked) until the fix is in — don't leave a stale check from before the
+  fix.
 - If a gate comes back as anything other than explicit approval, leave its
   box unchecked and say so plainly in the same message (e.g. "Gate 1 not yet
   approved — waiting on feedback") rather than omitting the checklist for
@@ -118,12 +123,15 @@ received explicit approval through that internal handoff. If it returns
 because the mockup needs changes, stay in step 1 — iterate on the mockup, you
 are not clear to proceed.
 
-### Step 3 — Backend implementation (TDD)
+### Step 3 — Backend implementation
 
-**REQUIRED SUB-SKILL:** Use `superpowers:test-driven-development` to
-implement the backend for this feature, scoped to the SRS excerpt captured in
-step 1. This produces unit-level tests exercising individual
-functions/modules — not the full user-facing flow (that's step 5).
+Implement the backend for this feature directly, scoped to the SRS excerpt
+captured in step 1. **Fast-track mode: skip `superpowers:test-driven-development`
+and do not write a unit-test suite** — write the code to satisfy the excerpt's
+FR/BR rules, and rely on step 4's review plus the human's own manual testing
+(step 5) to catch problems. If something is genuinely risky or easy to get
+subtly wrong (e.g. a money/deposit calculation), a quick ad-hoc sanity check
+is fine, but don't build out a formal suite for it.
 
 ### Step 4 — Domain-expert review
 
@@ -135,47 +143,39 @@ fresh subagent and reports back via `ReportFindings` — you don't need to
 build that dispatch yourself beyond supplying these two inputs.
 
 - If it returns a finding at business-rule severity (code doesn't implement,
-  or silently skips, a rule the excerpt states): fix the code, then re-run
-  step 3's test suite before continuing.
+  or silently skips, a rule the excerpt states): fix the code before
+  continuing.
 - If it returns only style-level findings: those may be deferred; proceed to
   step 5.
 
-### Step 5 — Acceptance / integration tests
-
-Write and run tests that exercise the full UC/FR flow described in the
-step-1 excerpt end to end — e.g. drive the actual API or UI path a real user
-would take, not individual functions in isolation. This is intentionally
-distinct from step 3's unit tests; it's checking that the pieces work
-together the way the use case describes, not that each function works alone.
-
-If step 4 produced a fix, re-run these acceptance tests too, not just step
-3's unit suite — a business-rule fix can change end-to-end behavior that unit
-tests don't cover.
-
-### Step 6 — Screenshots
+### Step 5 — Manual test handoff
 
 **REQUIRED SUB-SKILL:** Use `run` to (re)start the dev server if it isn't
-still running from step 1 (backend work in steps 3-5 may have required a
-restart). Once it's up, use Playwright to screenshot the completed feature's
-key screens — the same ones a human reviewer will want to see — so Gate 2 in
-step 7 has concrete evidence to ask about, not just a text description.
+still running from step 1 (backend work in step 3 may have required a
+restart). Once it's up, tell the human concretely what to click through to
+exercise the feature (which screens, which UC flow, what edge cases from the
+excerpt are worth checking) and wait for them to report back pass/fail.
+**Fast-track mode: no automated acceptance-test suite, no Playwright
+screenshots** — the human's own manual pass through the running app is what
+decides whether the feature works. If they report something broken, fix it
+and hand back for another manual pass before moving to step 6.
 
-### Step 7 — Gate 2: merge approval (hard gate)
+### Step 6 — Gate 2: merge approval (hard gate)
 
 1. Commit all work on the feature branch.
 2. Ask the human explicitly — via `AskUserQuestion` or the equivalent
    interactive-question tool in your environment — whether the complete
-   feature (mockup + backend + review + acceptance tests + screenshots) is
-   approved to merge into `main`. Show or reference the step-6 screenshots in
-   that question.
-3. **This is a hard gate, the same severity as Gate 1 in step 1.** Only on
-   unambiguous, explicit approval do you merge the branch into `main`. Any
-   other response — silence, a vague reaction, feedback, a question, "looks
-   good" without a clear go-ahead — means: stay on the branch, treat it as
-   feedback or as not yet answered, iterate, and ask again. Never auto-merge.
-   There is no version of "effectively approved" that counts as approved,
-   exactly as `ui-mockup-approval-gate` defines it for Gate 1 — the same
-   standard applies here.
+   feature (mockup + backend + review + their own manual test pass) is
+   approved to merge into `main`.
+3. **This is a hard gate, the same severity as Gate 1 in step 1 — human
+   manual testing decides correctness, but merging still requires explicit
+   sign-off.** Only on unambiguous, explicit approval do you merge the branch
+   into `main`. Any other response — silence, a vague reaction, feedback, a
+   question, "looks good" without a clear go-ahead — means: stay on the
+   branch, treat it as feedback or as not yet answered, iterate, and ask
+   again. Never auto-merge. There is no version of "effectively approved"
+   that counts as approved, exactly as `ui-mockup-approval-gate` defines it
+   for Gate 1 — the same standard applies here.
 
 ## Common Mistakes
 
@@ -192,10 +192,14 @@ step 7 has concrete evidence to ask about, not just a text description.
   `spec-driven-mockup` returns. `spec-driven-mockup` already owns that
   invocation as the last step of its own procedure — re-invoking the gate
   here would mean asking the human to approve the same mockup twice.
-- Conflating step 3's unit tests with step 5's acceptance tests, or skipping
-  step 5 because step 3's suite already passed — they check different
-  things (individual functions vs. the full UC/FR flow).
+- Skipping step 5's manual handoff — i.e. declaring the feature "done" based
+  only on the backend implementation and domain review, without the human
+  actually having clicked through the running app. The human's manual pass
+  is the completion signal in fast-track mode, not optional.
+- Reintroducing a TDD unit-test suite or an automated acceptance-test /
+  Playwright-screenshot pass "just to be safe" — fast-track mode drops these
+  on purpose; don't quietly add them back.
 - Letting the Progress Checklist go stale: checking a box before the step
   actually finished, or forgetting to re-post it after a step 4 fix forces
-  step 3/5 to re-run — the checklist should always reflect current reality,
+  step 3 to re-run — the checklist should always reflect current reality,
   not intent.

@@ -24,4 +24,12 @@ describe("session store", () => {
 
     expect(tokenA).not.toBe(tokenB);
   });
+
+  test("a revoked token no longer resolves to an account", () => {
+    const token = sessions.create("an@example.com");
+
+    sessions.revoke(token);
+
+    expect(sessions.resolve(token)).toBeUndefined();
+  });
 });

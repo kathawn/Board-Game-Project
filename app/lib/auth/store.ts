@@ -3,6 +3,9 @@ export type Account = {
   passwordHash: string;
   failedAttempts: number;
   lockedUntil: number | null;
+  hoTen: string;
+  sdt: string;
+  diaChi: string;
 };
 
 export interface AccountStore {
