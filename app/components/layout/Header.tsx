@@ -1,8 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { ShoppingCart, User } from "lucide-react";
+import { useCart } from "@/lib/cart/CartContext";
 
 const NAV_LINKS = [
   { href: "/products", label: "Bộ sưu tập" },
@@ -13,6 +15,13 @@ const NAV_LINKS = [
 
 export function Header() {
   const [scrolled, setScrolled] = useState(false);
+  const { totalItems } = useCart();
+  const pathname = usePathname();
+
+  // Trang chủ có hero nền tối (bg-wine-deep) phía sau header trong suốt —
+  // chữ phải sáng màu ở đó để không "chìm" vào nền; mọi trang khác nền sáng
+  // ngay từ đầu nên luôn dùng chữ tối.
+  const onDarkHero = pathname === "/" && !scrolled;
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 40);
@@ -29,8 +38,13 @@ export function Header() {
       }`}
     >
       <div className="mx-auto flex max-w-[1240px] items-center justify-between px-5 sm:px-8">
-        <Link href="/" className="font-heading text-xl font-bold tracking-tight">
-          Board<span className="text-wine">Verse</span>
+        <Link
+          href="/"
+          className={`font-heading text-xl font-bold tracking-tight ${
+            onDarkHero ? "text-cream" : "text-ink"
+          }`}
+        >
+          Board<span className={onDarkHero ? "text-gold" : "text-wine"}>Verse</span>
         </Link>
 
         <nav className="hidden gap-9 md:flex">
@@ -38,7 +52,9 @@ export function Header() {
             <a
               key={link.href}
               href={link.href}
-              className="text-[13px] font-medium uppercase tracking-wider"
+              className={`text-[13px] font-medium uppercase tracking-wider ${
+                onDarkHero ? "text-cream/85" : "text-ink"
+              }`}
             >
               {link.label}
             </a>
@@ -48,14 +64,23 @@ export function Header() {
         <div className="flex items-center gap-4">
           <Link
             href="/cart"
-            className="relative text-ink"
+            className={`relative ${onDarkHero ? "text-cream" : "text-ink"}`}
             aria-label="Giỏ hàng"
           >
             <ShoppingCart className="h-5 w-5" />
+            {totalItems > 0 && (
+              <span className="absolute -right-2 -top-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-wine px-1 text-[10px] font-semibold text-paper">
+                {totalItems}
+              </span>
+            )}
           </Link>
           <Link
             href="/login"
-            className="flex items-center gap-2 border border-ink px-5 py-2.5 text-xs font-semibold uppercase tracking-wider transition-colors hover:bg-ink hover:text-cream"
+            className={`flex items-center gap-2 border px-5 py-2.5 text-xs font-semibold uppercase tracking-wider transition-colors ${
+              onDarkHero
+                ? "border-cream/50 text-cream hover:border-cream hover:bg-cream/10"
+                : "border-ink text-ink hover:bg-ink hover:text-cream"
+            }`}
           >
             <User className="h-3.5 w-3.5" />
             Đăng nhập

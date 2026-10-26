@@ -5,6 +5,7 @@ import { AlertTriangle, CheckCircle2, Users2 } from "lucide-react";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { Reveal } from "@/components/Reveal";
+import { AddToCartControls } from "@/components/AddToCartControls";
 import { getProductBySlug, formatVND, giaThueNgayDau } from "@/lib/products";
 
 export default async function ProductDetailPage({
@@ -23,6 +24,8 @@ export default async function ProductDetailPage({
   }
 
   const trangThai: "ban" | "thue" = loai === "thue" ? "thue" : "ban";
+  const docBanItems = product.linhKien.filter((item) => item.docBan);
+  const tieuChuanItems = product.linhKien.filter((item) => !item.docBan);
 
   return (
     <>
@@ -97,9 +100,7 @@ export default async function ProductDetailPage({
                     <button className="flex-1 bg-wine px-8 py-4 text-[13px] font-semibold uppercase tracking-wider text-paper transition-all hover:-translate-y-0.5 hover:bg-wine-deep">
                       Mua ngay
                     </button>
-                    <button className="flex-1 border border-ink px-8 py-4 text-[13px] font-semibold uppercase tracking-wider text-ink transition-colors hover:bg-ink hover:text-cream">
-                      Thêm vào giỏ
-                    </button>
+                    <AddToCartControls product={product} />
                   </>
                 ) : (
                   <>
@@ -116,32 +117,95 @@ export default async function ProductDetailPage({
           </Reveal>
 
           {/* CHECKLIST LINH KIỆN — FR-BH-03 */}
-          <Reveal className="mt-16 rounded bg-paper p-6 shadow-[0_20px_40px_-20px_rgba(42,31,26,0.2)] sm:p-8">
-            <h2 className="mb-1 font-heading text-xl">Checklist linh kiện đi kèm</h2>
-            <p className="mb-6 text-sm text-ink-soft">
-              {product.linhKien.length} linh kiện được khai báo cho sản phẩm này — linh kiện{" "}
-              <strong className="font-semibold text-ink">độc bản</strong> được đánh dấu riêng: nếu
-              mất/hư hỏng khi trả hàng, khách đền 100% giá trị nguyên bộ sản phẩm; với linh kiện
-              không đánh dấu độc bản, khách đền theo giá linh kiện lẻ niêm yết, hoặc 20% giá trị
-              nguyên bộ nếu nhà phân phối không bán lẻ linh kiện đó (BRU-04).
-            </p>
-
-            <ul className="grid grid-cols-1 gap-x-8 gap-y-3 sm:grid-cols-2">
-              {product.linhKien.map((item) => (
-                <li key={item.ten} className="flex items-start gap-2.5 text-sm text-ink">
-                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-forest" />
-                  <span className="flex flex-wrap items-center gap-2">
-                    {item.ten}
-                    {item.docBan && (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-wine/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-wine">
-                        <AlertTriangle className="h-3 w-3" />
-                        Độc bản
-                      </span>
-                    )}
+          <Reveal className="mt-16 overflow-hidden rounded shadow-[0_20px_40px_-20px_rgba(42,31,26,0.2)]">
+            <div className="grid grid-cols-1 lg:grid-cols-[0.85fr_1.15fr]">
+              {/* Chính sách đền bù — panel tối để tạo tương phản với khối checklist */}
+              <div className="relative overflow-hidden bg-wine-deep px-8 py-10 text-cream sm:px-10">
+                <div
+                  className="pointer-events-none absolute inset-0 opacity-50"
+                  style={{
+                    background:
+                      "radial-gradient(ellipse at 20% 15%, rgba(184,144,63,0.22), transparent 55%)",
+                  }}
+                />
+                <div className="relative">
+                  <span className="mb-3 inline-block text-xs font-semibold uppercase tracking-[0.18em] text-gold">
+                    Chính sách đền bù — BRU-04
                   </span>
-                </li>
-              ))}
-            </ul>
+                  <h2 className="mb-4 font-heading text-2xl leading-tight">
+                    Checklist linh kiện đi kèm
+                  </h2>
+                  <p className="text-sm leading-relaxed text-cream/75">
+                    {product.linhKien.length} linh kiện được khai báo cho sản phẩm này. Kiểm đủ
+                    khi nhận hàng — đây là căn cứ tính đền bù nếu có thất lạc lúc trả.
+                  </p>
+
+                  <div className="mt-8 space-y-5 border-t border-cream/15 pt-6">
+                    <div className="flex gap-3">
+                      <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-gold" />
+                      <p className="text-[13px] leading-relaxed text-cream/70">
+                        <strong className="font-semibold text-gold">Độc bản</strong> — mất hoặc hư
+                        hỏng khi trả hàng: đền 100% giá trị nguyên bộ sản phẩm.
+                      </p>
+                    </div>
+                    <div className="flex gap-3">
+                      <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-cream/60" />
+                      <p className="text-[13px] leading-relaxed text-cream/70">
+                        <strong className="font-semibold text-cream">Tiêu chuẩn</strong> — đền theo
+                        giá linh kiện lẻ niêm yết, hoặc 20% giá trị nguyên bộ nếu nhà phân phối
+                        không bán lẻ.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Danh sách linh kiện, nhóm theo độc bản / tiêu chuẩn */}
+              <div className="bg-paper px-8 py-10 sm:px-10">
+                {docBanItems.length > 0 && (
+                  <div className={tieuChuanItems.length > 0 ? "mb-9" : undefined}>
+                    <h3 className="mb-4 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-wine">
+                      <AlertTriangle className="h-3.5 w-3.5" />
+                      Linh kiện độc bản
+                      <span className="font-normal normal-case tracking-normal text-ink-soft">
+                        ({docBanItems.length})
+                      </span>
+                    </h3>
+                    <ul className="divide-y divide-ink/8">
+                      {docBanItems.map((item, i) => (
+                        <li key={item.ten} className="flex items-baseline gap-4 py-3">
+                          <span className="font-heading text-xs italic text-wine/55">
+                            {String(i + 1).padStart(2, "0")}
+                          </span>
+                          <span className="text-sm text-ink">{item.ten}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {tieuChuanItems.length > 0 && (
+                  <div>
+                    <h3 className="mb-4 text-xs font-semibold uppercase tracking-wider text-ink-soft">
+                      Linh kiện tiêu chuẩn
+                      <span className="ml-2 font-normal normal-case tracking-normal">
+                        ({tieuChuanItems.length})
+                      </span>
+                    </h3>
+                    <ul className="divide-y divide-ink/8">
+                      {tieuChuanItems.map((item, i) => (
+                        <li key={item.ten} className="flex items-baseline gap-4 py-3">
+                          <span className="font-heading text-xs italic text-ink-soft/55">
+                            {String(i + 1).padStart(2, "0")}
+                          </span>
+                          <span className="text-sm text-ink-soft">{item.ten}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            </div>
           </Reveal>
         </div>
       </main>
