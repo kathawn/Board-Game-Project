@@ -1,5 +1,5 @@
 import { describe, test, expect } from "vitest";
-import { filterProducts, PRODUCTS } from "./products";
+import { checkStock, filterProducts, PRODUCTS } from "./products";
 
 describe("filterProducts (FR-BH-02)", () => {
   test("returns all products when no filter is given", () => {
@@ -50,5 +50,48 @@ describe("filterProducts (FR-BH-02)", () => {
     const result = filterProducts(PRODUCTS, { q: "khong-ton-tai" });
 
     expect(result).toEqual([]);
+  });
+});
+
+describe("checkStock (FR-BH-04)", () => {
+  const catan = PRODUCTS.find((p) => p.slug === "catan")!; // soLuongTon: 2
+  const coup = PRODUCTS.find((p) => p.slug === "coup")!; // soLuongTon: 0
+
+  test("allows checkout when the product has at least the requested quantity available", () => {
+    const result = checkStock(catan, 2);
+
+    expect(result).toEqual({ ok: true });
+  });
+
+  test("rejects with a clear message when the product is completely out of stock", () => {
+    const result = checkStock(coup, 1);
+
+    expect(result.ok).toBe(false);
+    expect((result as { ok: false; error: string }).error).toContain("hết hàng");
+  });
+
+  test("rejects with a clear message when fewer units are available than requested", () => {
+    const result = checkStock(catan, 3);
+
+    expect(result.ok).toBe(false);
+    expect((result as { ok: false; error: string }).error).toContain("không đủ");
+  });
+
+  test("rejects a zero quantity as an invalid selection, even when the product has stock", () => {
+    const result = checkStock(catan, 0);
+
+    expect(result.ok).toBe(false);
+  });
+
+  test("rejects a negative quantity as an invalid selection", () => {
+    const result = checkStock(catan, -5);
+
+    expect(result.ok).toBe(false);
+  });
+
+  test("rejects a non-numeric (NaN) quantity as an invalid selection", () => {
+    const result = checkStock(catan, Number("abc"));
+
+    expect(result.ok).toBe(false);
   });
 });

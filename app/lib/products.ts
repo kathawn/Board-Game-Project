@@ -15,6 +15,8 @@ export interface Product {
   linhKien: string[];
   tone: ProductTone;
   moTaNgan: string;
+  /** FR-BH-04: số hộp game đang ở trạng thái Available cho sản phẩm này (SDD model HopGame). */
+  soLuongTon: number;
 }
 
 export const PRODUCTS: Product[] = [
@@ -38,6 +40,7 @@ export const PRODUCTS: Product[] = [
     ],
     tone: "amber",
     moTaNgan: "Tham vọng, mặc cả, và một chút lạnh lùng với người thân.",
+    soLuongTon: 2,
   },
   {
     slug: "ma-soi",
@@ -50,6 +53,7 @@ export const PRODUCTS: Product[] = [
     linhKien: ["Bộ bài vai trò (18 lá)", "Thẻ Đêm/Ngày", "Hướng dẫn luật chơi", "Hộp đựng bài"],
     tone: "wine",
     moTaNgan: "Giữ mặt lạnh, dò xét từng ánh nhìn — ai cười sau cùng mới thắng.",
+    soLuongTon: 2,
   },
   {
     slug: "catan",
@@ -71,6 +75,7 @@ export const PRODUCTS: Product[] = [
     ],
     tone: "forest",
     moTaNgan: "Dựng làng, mở đường, thương lượng từng viên đất sét.",
+    soLuongTon: 2,
   },
   {
     slug: "uno",
@@ -83,6 +88,7 @@ export const PRODUCTS: Product[] = [
     linhKien: ["Bộ 108 lá bài UNO", "Hộp nhựa đựng bài", "Hướng dẫn luật chơi"],
     tone: "sky",
     moTaNgan: "Nhanh, gọn, may rủi vừa đủ cho một tối giữa tuần.",
+    soLuongTon: 2,
   },
   {
     slug: "7-wonders",
@@ -95,6 +101,7 @@ export const PRODUCTS: Product[] = [
     linhKien: ["Bộ thẻ kỳ quan (7 kỳ quan)", "Thẻ công trình 3 thời đại", "Bộ đồng xu", "Thẻ xung đột quân sự"],
     tone: "forest",
     moTaNgan: "Bảy kỳ quan, một thời đại — dựng cả nền văn minh trong một buổi tối.",
+    soLuongTon: 2,
   },
   {
     slug: "azul",
@@ -107,6 +114,7 @@ export const PRODUCTS: Product[] = [
     linhKien: ["100 viên gạch men (5 màu)", "4 bảng cá nhân", "1 túi vải rút", "Thẻ điểm tiên phong"],
     tone: "sky",
     moTaNgan: "Ghép từng viên gạch men thành bức tường hoàng cung đẹp nhất.",
+    soLuongTon: 2,
   },
   {
     slug: "bang",
@@ -119,6 +127,7 @@ export const PRODUCTS: Product[] = [
     linhKien: ["Bộ bài vai trò (Cảnh sát/Ngoài vòng pháp luật/Phó cảnh sát)", "Bộ bài hành động", "Thẻ súng & vật phẩm", "Thẻ máu"],
     tone: "wine",
     moTaNgan: "Súng, mưu kế và những liên minh đổi chiều giữa miền Viễn Tây.",
+    soLuongTon: 2,
   },
   {
     slug: "carcassonne",
@@ -131,6 +140,7 @@ export const PRODUCTS: Product[] = [
     linhKien: ["72 quân domino địa hình", "40 quân thợ xây (follower)", "Bảng tính điểm", "Túi vải đựng quân"],
     tone: "amber",
     moTaNgan: "Từng viên gạch dựng nên thành quách, đường xá và đồng cỏ Pháp cổ.",
+    soLuongTon: 2,
   },
   {
     slug: "codenames",
@@ -143,6 +153,7 @@ export const PRODUCTS: Product[] = [
     linhKien: ["200 thẻ từ khoá", "Lưới gợi ý mật danh (2 phe)", "Thẻ điệp viên/ám sát", "Đồng hồ cát"],
     tone: "sky",
     moTaNgan: "Một từ gợi ý, cả đội cùng đoán — sai một ly là lộ điệp viên.",
+    soLuongTon: 2,
   },
   {
     slug: "coup",
@@ -155,6 +166,7 @@ export const PRODUCTS: Product[] = [
     linhKien: ["15 thẻ vai trò (5 loại)", "Thẻ ảnh hưởng", "Bộ đồng xu nhựa"],
     tone: "wine",
     moTaNgan: "Nói dối trơn tru, lật tẩy đúng lúc — triều đình chỉ có một người thắng.",
+    soLuongTon: 0,
   },
   {
     slug: "exploding-kittens",
@@ -167,6 +179,7 @@ export const PRODUCTS: Product[] = [
     linhKien: ["Bộ bài 56 lá", "Thẻ Mèo Nổ", "Thẻ Vô Hiệu Hoá", "Hướng dẫn luật chơi"],
     tone: "amber",
     moTaNgan: "Rút bài, cầu may, đừng rút trúng con mèo sẽ nổ tung bàn chơi.",
+    soLuongTon: 0,
   },
   {
     slug: "gloomhaven",
@@ -179,6 +192,7 @@ export const PRODUCTS: Product[] = [
     linhKien: ["Bộ bảng bản đồ module", "Sổ chiến dịch", "Bộ thẻ nhân vật & quái vật", "Hộp mini miniature", "Sổ luật chơi dày"],
     tone: "forest",
     moTaNgan: "Một chiến dịch nhập vai dài hơi, mỗi trận đánh là một chương truyện.",
+    soLuongTon: 2,
   },
   {
     slug: "root",
@@ -191,6 +205,7 @@ export const PRODUCTS: Product[] = [
     linhKien: ["Bảng bản đồ rừng", "4 bộ quân phe (Mèo/Chim/Chuột/Cáo)", "Bộ thẻ sự kiện", "Xúc xắc chiến đấu"],
     tone: "forest",
     moTaNgan: "Bốn phe, bốn luật chơi riêng — khu rừng chỉ đủ chỗ cho một kẻ thống trị.",
+    soLuongTon: 2,
   },
   {
     slug: "scythe",
@@ -203,6 +218,7 @@ export const PRODUCTS: Product[] = [
     linhKien: ["Bảng bản đồ lớn", "5 bộ quân phe (mech, công nhân)", "Bộ thẻ tài nguyên", "Bảng điểm hiện đại hoá"],
     tone: "wine",
     moTaNgan: "Mở rộng lãnh thổ, phát triển mech — một đế chế hậu chiến tranh.",
+    soLuongTon: 2,
   },
   {
     slug: "splendor",
@@ -215,6 +231,7 @@ export const PRODUCTS: Product[] = [
     linhKien: ["90 thẻ phát triển (3 cấp)", "Token đá quý (6 loại)", "10 thẻ quý tộc"],
     tone: "sky",
     moTaNgan: "Thu mua đá quý, dựng xưởng kim hoàn, chiêu mộ quý tộc ghé qua.",
+    soLuongTon: 2,
   },
   {
     slug: "ticket-to-ride",
@@ -227,6 +244,7 @@ export const PRODUCTS: Product[] = [
     linhKien: ["Bảng bản đồ tuyến tàu", "240 toa tàu nhựa (5 màu)", "Bộ thẻ toa tàu", "Thẻ lộ trình đích"],
     tone: "amber",
     moTaNgan: "Nối từng thành phố bằng đường ray, chạy đua hoàn thành lộ trình bí mật.",
+    soLuongTon: 2,
   },
 ];
 
@@ -238,6 +256,26 @@ export function giaThueNgayDau(giaNiemYet: number): number {
 
 export function formatVND(amount: number): string {
   return amount.toLocaleString("vi-VN") + "đ";
+}
+
+export type StockCheckResult = { ok: true } | { ok: false; error: string };
+
+/** FR-BH-04: kiểm tra sản phẩm còn đủ số lượng hộp game Available trước khi
+ * cho khách thêm vào giỏ/checkout. */
+export function checkStock(product: Product, soLuong: number): StockCheckResult {
+  if (!Number.isInteger(soLuong) || soLuong < 1) {
+    return { ok: false, error: "Số lượng chọn mua không hợp lệ." };
+  }
+  if (product.soLuongTon === 0) {
+    return { ok: false, error: `${product.ten} đã hết hàng.` };
+  }
+  if (product.soLuongTon < soLuong) {
+    return {
+      ok: false,
+      error: `${product.ten} không đủ số lượng yêu cầu (còn ${product.soLuongTon}, yêu cầu ${soLuong}).`,
+    };
+  }
+  return { ok: true };
 }
 
 export interface ProductFilter {
