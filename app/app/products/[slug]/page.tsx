@@ -121,8 +121,9 @@ export default async function ProductDetailPage({
             <p className="mb-6 text-sm text-ink-soft">
               {product.linhKien.length} linh kiện được khai báo cho sản phẩm này — linh kiện{" "}
               <strong className="font-semibold text-ink">độc bản</strong> được đánh dấu riêng: nếu
-              mất/hư hỏng khi trả hàng, khách đền 100% giá trị nguyên bộ sản phẩm thay vì giá linh
-              kiện lẻ (BRU-04).
+              mất/hư hỏng khi trả hàng, khách đền 100% giá trị nguyên bộ sản phẩm; với linh kiện
+              không đánh dấu độc bản, khách đền theo giá linh kiện lẻ niêm yết, hoặc 20% giá trị
+              nguyên bộ nếu nhà phân phối không bán lẻ linh kiện đó (BRU-04).
             </p>
 
             <ul className="grid grid-cols-1 gap-x-8 gap-y-3 sm:grid-cols-2">
