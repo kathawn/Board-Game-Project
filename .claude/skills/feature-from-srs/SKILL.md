@@ -38,6 +38,43 @@ arc, not a fragment of it.
 | 6. Screenshots | (re)start the dev server, capture the finished feature | **REQUIRED SUB-SKILL:** `run`, then Playwright |
 | 7. Gate 2 (merge) | commit, ask the human, merge only on explicit approval | this skill |
 
+## Progress Checklist
+
+Maintain this checklist for the whole run and keep it visible to the human —
+post the current state (as plain markdown checkboxes in your own text reply,
+not buried inside a tool call) right after you finish each step, so anyone
+reading the conversation can tell which step is running without having to
+reconstruct it from tool output. Copy this block once at the start of the
+run, then re-post it with boxes updated whenever a step completes, a gate
+blocks, or a step has to re-run after a fix:
+
+```
+- [ ] 0. Branch created (feature/<slug>)
+- [ ] 1. Spec excerpt found + mockup built (spec-driven-mockup)
+- [ ] Gate 1 — mockup approved by human
+- [ ] 3. Backend implemented (TDD)
+- [ ] 4. Domain-expert review done (no business-rule findings open)
+- [ ] 5. Acceptance tests written and passing
+- [ ] 6. Screenshots captured
+- [ ] Gate 2 — merge approved by human
+```
+
+Rules for keeping it honest:
+- Check a box only when that step has actually finished (tests green, gate
+  explicitly approved, etc.) — not when you've started it or intend to do it
+  next.
+- If step 4 produces a business-rule finding, uncheck step 3 and step 5 (if
+  already checked) until the fix is in and both suites are re-run green —
+  don't leave stale checks from before the fix.
+- If a gate comes back as anything other than explicit approval, leave its
+  box unchecked and say so plainly in the same message (e.g. "Gate 1 not yet
+  approved — waiting on feedback") rather than omitting the checklist for
+  that turn.
+- This checklist is a communication aid, not a substitute for the hard-gate
+  behavior defined in Gate 1 / Gate 2 below — an unchecked gate box still
+  means stop and wait, regardless of how far the rest of the list has
+  progressed.
+
 ## Procedure
 
 ### Step 0 — Branch
@@ -158,3 +195,7 @@ step 7 has concrete evidence to ask about, not just a text description.
 - Conflating step 3's unit tests with step 5's acceptance tests, or skipping
   step 5 because step 3's suite already passed — they check different
   things (individual functions vs. the full UC/FR flow).
+- Letting the Progress Checklist go stale: checking a box before the step
+  actually finished, or forgetting to re-post it after a step 4 fix forces
+  step 3/5 to re-run — the checklist should always reflect current reality,
+  not intent.
