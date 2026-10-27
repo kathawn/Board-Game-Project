@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Menu as MenuPrimitive } from "@base-ui/react/menu";
-import { ShoppingCart, User, Settings, LogOut } from "lucide-react";
+import { ShoppingCart, User, Settings, LogOut, Receipt } from "lucide-react";
 
 const NAV_LINKS = [
   { href: "/products", label: "Bộ sưu tập" },
@@ -87,6 +87,13 @@ export function Header() {
                     >
                       <User className="h-4 w-4" />
                       Hồ sơ cá nhân
+                    </MenuPrimitive.Item>
+                    <MenuPrimitive.Item
+                      render={<Link href="/orders" />}
+                      className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-ink data-[highlighted]:bg-cream"
+                    >
+                      <Receipt className="h-4 w-4" />
+                      Lịch sử đơn
                     </MenuPrimitive.Item>
                     <MenuPrimitive.Item
                       render={<Link href="/account" />}
