@@ -5,6 +5,7 @@ import { AlertTriangle, CheckCircle2, Users2 } from "lucide-react";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { Reveal } from "@/components/Reveal";
+import { RentalAddToCart } from "@/components/RentalAddToCart";
 import { getProductBySlug, formatVND, giaThueNgayDau } from "@/lib/products";
 
 export default async function ProductDetailPage({
@@ -91,27 +92,19 @@ export default async function ProductDetailPage({
                 {product.moTaNgan}
               </p>
 
-              <div className="flex flex-wrap gap-4">
-                {trangThai === "ban" ? (
-                  <>
-                    <button className="flex-1 bg-wine px-8 py-4 text-[13px] font-semibold uppercase tracking-wider text-paper transition-all hover:-translate-y-0.5 hover:bg-wine-deep">
-                      Mua ngay
-                    </button>
-                    <button className="flex-1 border border-ink px-8 py-4 text-[13px] font-semibold uppercase tracking-wider text-ink transition-colors hover:bg-ink hover:text-cream">
-                      Thêm vào giỏ
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <button className="flex-1 bg-wine px-8 py-4 text-[13px] font-semibold uppercase tracking-wider text-paper transition-all hover:-translate-y-0.5 hover:bg-wine-deep">
-                      Thuê ngay
-                    </button>
-                    <button className="flex-1 border border-ink px-8 py-4 text-[13px] font-semibold uppercase tracking-wider text-ink transition-colors hover:bg-ink hover:text-cream">
-                      Thêm vào giỏ
-                    </button>
-                  </>
-                )}
-              </div>
+              {trangThai === "ban" ? (
+                <div className="flex flex-wrap gap-4">
+                  <button className="flex-1 bg-wine px-8 py-4 text-[13px] font-semibold uppercase tracking-wider text-paper transition-all hover:-translate-y-0.5 hover:bg-wine-deep">
+                    Mua ngay
+                  </button>
+                  <button className="flex-1 border border-ink px-8 py-4 text-[13px] font-semibold uppercase tracking-wider text-ink transition-colors hover:bg-ink hover:text-cream">
+                    Thêm vào giỏ
+                  </button>
+                </div>
+              ) : (
+                // FR-CT-01 — chọn ngày thuê riêng cho sản phẩm này rồi thêm vào giỏ thuê
+                <RentalAddToCart productSlug={product.slug} />
+              )}
             </div>
           </Reveal>
 
