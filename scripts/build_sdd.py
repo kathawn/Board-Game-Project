@@ -30,6 +30,7 @@ ds.version_history(doc, [
     ["0.5", "08/11/2026", pd.AUTHOR, "Hoàn thiện mục 9-16 (Sitemap, Wireframe, thuật toán tồn kho/giá/phạt/phí ship/webhook)."],
     ["0.9", "11/11/2026", pd.AUTHOR, "Hoàn thiện mục 17-18 (API Endpoints, Design Class Diagram v2 dạng PlantUML), rà soát khả thi kỹ thuật."],
     ["1.0", "14/11/2026", pd.AUTHOR, "Phê duyệt kỹ thuật (Technical Sign-off)."],
+    ["1.1", "20/11/2026", pd.AUTHOR, "Đồng bộ lại SDD cho khớp 1-1 với SRS mục 3.5 (ERD 13 thực thể): bổ sung model ViDienTu (BRU-06, BR-16, FR-TTGV-09) và DanhGia (BR-15, FR-BH-11) còn thiếu; đổi GiaoVan từ khuVuc (NoiThanh/NgoaiThanh/NgoaiTinh, không có trong ERD) sang đúng doiTac + khoangCachKm theo BRU-05; bỏ hinhThucNhan/hinhThucTra (TuDenLay/TuMangTra) ở ChiTietDonHang vì mâu thuẫn BR-09/SC-08 (hệ thống không có hình thức tự đến lấy/tự mang trả), thay bằng diaChiNhan/diaChiTra đúng ERD; cập nhật tương ứng Enum, Seed Data, thuật toán phí ship, API Endpoints và Class Diagram."],
 ])
 
 ds.toc_placeholder(doc)
@@ -48,7 +49,7 @@ ds.picture(doc, DIAG + "sdd_1_architecture.png", width_cm=15)
 ds.bullets(doc, [
     "Presentation: các trang Next.js (App Router), React Server Components cho trang đọc dữ liệu (danh sách sản phẩm), Client Components cho phần tương tác (chọn ngày thuê, giỏ hàng, theo dõi mã QR/trạng thái giao vận).",
     "Application/Service: Server Actions và Route Handlers chứa toàn bộ logic nghiệp vụ — nơi hiện thực các quy tắc BRU-01..06, gồm cả tính phí ship và xử lý webhook từ MoMo/Green SM.",
-    "Data Access: Prisma Client, mỗi entity ở ERD (SRS mục 3.5) tương ứng một Prisma model (11 model, mục 3).",
+    "Data Access: Prisma Client, mỗi entity ở ERD (SRS mục 3.5) tương ứng một Prisma model (13 model, mục 3).",
     "Database: PostgreSQL, triển khai trên dịch vụ PaaS (Railway/Supabase) theo Tech Stack mục 2.",
     "Integration: lớp gọi API/webhook ra ngoài tới MoMo (thanh toán) và Green SM (giao vận), đặt trong Application/Service, không để Presentation gọi trực tiếp đối tác bên thứ ba.",
 ])
@@ -63,18 +64,30 @@ ds.table(doc, ["Thành phần", "Lựa chọn", "Lý do"], pd.TECH_STACK, col_wi
 # 3. SCHEMA PRISMA
 # ===========================================================================
 ds.heading(doc, "3. Thiết kế Schema Prisma", level=1)
-ds.para(doc, "Chuyển đổi trực tiếp từ ERD đã chốt ở SRS mục 3.5 (Hình 3.3): đầy đủ 11 model, khớp 1-1 với 11 "
+ds.para(doc, "Chuyển đổi trực tiếp từ ERD đã chốt ở SRS mục 3.5 (Hình 3.3): đầy đủ 13 model, khớp 1-1 với 13 "
              "thực thể của ERD và với Từ điển dữ liệu ở SRS mục 7.1. Trong ChiTietDonHang, soLuong chỉ có ý nghĩa với "
              "đơn mua (loai = Ban, mặc định 1, có thể > 1 — FR-BH-08); ngayBatDau/ngayKetThuc là NULL với đơn mua và "
-             "bắt buộc với đơn thuê (loai = Thue).")
+             "bắt buộc với đơn thuê (loai = Thue). diaChiNhan/diaChiTra lưu địa chỉ cụ thể cho từng chiều giao vận "
+             "(FR-TTGV-01, BR-09) — hệ thống không có hình thức tự đến lấy/tự mang trả (SC-08), nên mọi dòng đơn đều "
+             "bắt buộc qua giao vận, không có enum \"hình thức nhận/trả\" nào khác.")
 ds.code_block(doc, '''
 model KhachHang {
   id            String   @id @default(uuid())
   hoTen         String
   email         String   @unique
   sdt           String
+  diaChi        String
   matKhauHash   String
   donHang       DonHang[]
+  danhGia       DanhGia[]
+  viDienTu      ViDienTu?
+}
+
+model ViDienTu {
+  id            String   @id @default(uuid())
+  khachHangId   String   @unique
+  khachHang     KhachHang @relation(fields: [khachHangId], references: [id])
+  soDu          Decimal  @default(0)
 }
 
 model SanPham {
@@ -87,6 +100,7 @@ model SanPham {
   hopGame       HopGame[]
   linhKien      LinhKien[]
   chiTietDon    ChiTietDonHang[]
+  danhGia       DanhGia[]
 }
 
 model HopGame {
@@ -103,6 +117,19 @@ model LinhKien {
   sanPham       SanPham  @relation(fields: [sanPhamId], references: [id])
   tenLinhKien   String
   laDocBan      Boolean  @default(false)
+}
+
+model DanhGia {
+  id            String   @id @default(uuid())
+  sanPhamId     String
+  sanPham       SanPham  @relation(fields: [sanPhamId], references: [id])
+  khachHangId   String
+  khachHang     KhachHang @relation(fields: [khachHangId], references: [id])
+  donHangId     String
+  donHang       DonHang  @relation(fields: [donHangId], references: [id])
+  soSao         Int
+  nhanXet       String?
+  ngayDanhGia   DateTime @default(now())
 }
 
 model NhanVien {
@@ -125,6 +152,7 @@ model DonHang {
   chiTiet      ChiTietDonHang[]
   datCoc       DatCoc?
   thanhToan    ThanhToan[]
+  danhGia      DanhGia[]
 }
 
 model ChiTietDonHang {
@@ -137,8 +165,8 @@ model ChiTietDonHang {
   ngayBatDau   DateTime?
   ngayKetThuc  DateTime?
   donGia       Decimal
-  hinhThucNhan HinhThucNhan  @default(TuDenLay)
-  hinhThucTra  HinhThucTra?
+  diaChiNhan   String
+  diaChiTra    String?
   giaoVan      GiaoVan[]
   bienBan      BienBanKiemDem[]
 }
@@ -158,7 +186,8 @@ model GiaoVan {
   chiTietDonId        String
   chiTietDon          ChiTietDonHang @relation(fields: [chiTietDonId], references: [id])
   chieu               ChieuGiaoVan
-  khuVuc               KhuVucGiaoVan
+  doiTac              DoiTacGiaoVan
+  khoangCachKm        Decimal
   phiShip              Decimal
   maVanDon             String?  @unique
   trangThaiVanChuyen   TrangThaiVanChuyen
@@ -195,10 +224,8 @@ ds.table(doc, ["Enum", "Giá trị", "Dùng ở Model"], [
     ["LoaiDonHang", "Ban, Thue", "DonHang"],
     ["TrangThaiCoc", "Held, Refunded, Partially_Refunded", "DatCoc"],
     ["VaiTroNhanVien", "Staff, Admin", "NhanVien"],
-    ["HinhThucNhan", "TuDenLay, GiaoVan", "ChiTietDonHang.hinhThucNhan (BR-09)"],
-    ["HinhThucTra", "TuMangTra, GiaoVan", "ChiTietDonHang.hinhThucTra (BR-09)"],
     ["ChieuGiaoVan", "Nhan, Tra", "GiaoVan.chieu"],
-    ["KhuVucGiaoVan", "NoiThanh, NgoaiThanh, NgoaiTinh", "GiaoVan.khuVuc (BRU-05)"],
+    ["DoiTacGiaoVan", "GreenSM, ShopeeExpress", "GiaoVan.doiTac — hệ thống tự động chọn theo khoảng cách (BRU-05): GreenSM nếu ≤ 20km, ShopeeExpress nếu > 20km."],
     ["TrangThaiVanChuyen", "DangGiao, DaGiao, DangLay, DaLay", "GiaoVan.trangThaiVanChuyen (FR-TTGV-05)"],
     ["MucDichThanhToan", "TienHang, TienCoc, ThuThem", "ThanhToan.mucDich (FR-TTGV-06)"],
     ["TrangThaiThanhToan", "ChoThanhToan, DaThanhToan, HetHieuLuc", "ThanhToan.trangThai (BRU-06)"],
@@ -214,7 +241,9 @@ ds.table(doc, ["Bảng", "Cột lập chỉ mục", "Mục đích"], [
     ["DonHang", "trang_thai", "Tăng tốc lọc đơn theo trạng thái trên POS nội bộ (SCR-04)."],
     ["HopGame", "trang_thai", "Tăng tốc tra cứu sản phẩm theo trạng thái khi xuất/nhập kho."],
     ["LinhKien", "san_pham_id", "Tăng tốc lấy checklist linh kiện khi hiển thị chi tiết sản phẩm (FR-BH-03)."],
-    ["GiaoVan", "ma_van_don (UNIQUE)", "Tra cứu O(1) lượt giao vận theo mã vận đơn khi xử lý webhook Green SM (FR-TTGV-05, mục 16)."],
+    ["DanhGia", "san_pham_id", "Tăng tốc tính điểm trung bình và danh sách nhận xét trên trang chi tiết sản phẩm (FR-BH-11)."],
+    ["ViDienTu", "khach_hang_id (UNIQUE)", "Tra cứu O(1) ví điện tử của khách khi hoàn cọc/rút tiền (BRU-06, FR-TTGV-09)."],
+    ["GiaoVan", "ma_van_don (UNIQUE)", "Tra cứu O(1) lượt giao vận theo mã vận đơn khi xử lý webhook Green SM/Shopee Express (FR-TTGV-05, mục 16)."],
     ["ThanhToan", "ma_qr (UNIQUE)", "Tra cứu O(1) khoản thanh toán theo mã QR khi xử lý webhook MoMo (FR-TTGV-07, mục 16)."],
     ["ThanhToan", "(don_hang_id, trang_thai)", "Tăng tốc kiểm tra các khoản còn chờ thanh toán của một đơn (ví dụ khi quyết toán hoàn cọc, UC-07)."],
     ["BienBanKiemDem", "chi_tiet_don_id", "Tăng tốc tra cứu biên bản kiểm đếm theo dòng đơn khi quyết toán (UC-08)."],
@@ -236,11 +265,11 @@ for name, _cat, _lo, _hi, _price, comps in pd.SAMPLE_GAMES:
 
 ds.heading(doc, "8. Kịch bản Seed Data", level=1)
 ds.numbered(doc, [
-    "Tạo 3 tài khoản demo: 1 Customer (bảng KhachHang), 1 Staff và 1 Admin (bảng NhanVien, có email/matKhauHash riêng, dangHoatDong = true) — mật khẩu demo đã băm.",
+    "Tạo 3 tài khoản demo: 1 Customer (bảng KhachHang, có diaChi mẫu dùng làm địa chỉ nhận hàng mặc định), 1 Staff và 1 Admin (bảng NhanVien, có email/matKhauHash riêng, dangHoatDong = true) — mật khẩu demo đã băm. Tạo kèm 1 bản ghi ViDienTu cho Customer (soDu = 0) theo đúng quan hệ 1-1 (BRU-06).",
     "Nạp 5 sản phẩm mẫu ở mục 6 kèm danh sách linh kiện tương ứng ở mục 7 vào bảng SanPham/LinhKien.",
     "Với mỗi sản phẩm, tạo 2 bản ghi HopGame ở trạng thái Available để có dữ liệu thử nghiệm đặt thuê, riêng 2 sản phẩm (UNO, Cờ Cá Ngựa) tạo thêm mỗi sản phẩm 2 bản ghi HopGame ở trạng thái Sold để kiểm thử giỏ hàng nhiều sản phẩm/số lượng.",
-    "Tạo 2 đơn thuê mẫu: 1 đơn Active với hinhThucNhan = TuDenLay (không phí ship), 1 đơn Completed đã hoàn cọc với hinhThucNhan = GiaoVan khu vực NoiThanh (có GiaoVan + ThanhToan mẫu) để kiểm thử cả hai nhánh BRU-01/BRU-05.",
-    "Với đơn Completed, tạo kèm 1 bản ghi ThanhToan (mucDich = TienCoc, trangThai = DaThanhToan, có maQR) và 1 bản ghi BienBanKiemDem (ketQua = 'Đủ linh kiện') để kiểm thử luồng hoàn cọc đầy đủ.",
+    "Tạo 2 đơn thuê mẫu, cả hai đều giao vận 2 chiều bắt buộc (BR-09, không có hình thức tự đến lấy/tự mang trả): 1 đơn Active với diaChiNhan trong bán kính 20km (GiaoVan.doiTac = GreenSM), 1 đơn Completed đã hoàn cọc với diaChiNhan ngoài bán kính 20km (GiaoVan.doiTac = ShopeeExpress, có GiaoVan + ThanhToan mẫu) để kiểm thử cả hai nhánh đối tác của BRU-01/BRU-05.",
+    "Với đơn Completed, tạo kèm 1 bản ghi ThanhToan (mucDich = TienCoc, trangThai = DaThanhToan, có maQR), 1 bản ghi BienBanKiemDem (ketQua = 'Đủ linh kiện') để kiểm thử luồng hoàn cọc đầy đủ, và 1 bản ghi DanhGia (soSao = 5, có nhanXet) gắn với đơn này để kiểm thử luồng đánh giá sau khi đơn Completed (FR-BH-11).",
     "Tạo 1 đơn mua mẫu (loai = Ban) đã Confirmed, gồm 2 dòng ChiTietDonHang: UNO soLuong = 2 và Cờ Cá Ngựa soLuong = 1, gắn với các bản ghi HopGame trạng thái Sold ở trên, để kiểm thử luồng giỏ hàng nhiều sản phẩm (UC-03/FR-BH-08/09).",
 ])
 
@@ -314,26 +343,40 @@ function tinhPhatTreHan(giaNiemYet, soNgayTre):
 # 15. THUAT TOAN PHI GIAO VAN & CHENH LECH HOAN COC (MOI)
 # ===========================================================================
 ds.heading(doc, "15. Thuật toán tính phí giao vận và chênh lệch hoàn cọc", level=1)
-ds.para(doc, "Hiện thực trực tiếp quy tắc BRU-01 (tiền cọc có cộng phí ship) và BRU-05 (phí ship theo khu vực), "
-             "đồng thời giải quyết FR-TTGV-08 (chênh lệch phí ship giữa lúc giữ cọc và lúc quyết toán).")
+ds.para(doc, "Hiện thực trực tiếp quy tắc BRU-01 (tiền cọc có cộng phí ship) và BRU-05 (chọn đối tác theo bán kính "
+             "20km, phí ship do đối tác báo giá theo khoảng cách thực tế qua API giả lập), đồng thời giải quyết "
+             "FR-TTGV-08 (chênh lệch phí ship giữa lúc giữ cọc và lúc quyết toán). Mọi dòng đơn đều bắt buộc qua "
+             "giao vận ở cả hai chiều (BR-09, SC-08 — không có hình thức tự đến lấy/tự mang trả), nên hàm tính phí "
+             "không có nhánh miễn phí.")
 ds.code_block(doc, '''
-BANG_PHI_SHIP = { NoiThanh: 20000, NgoaiThanh: 35000, NgoaiTinh: 60000 }   // BRU-05
+BANG_GIA_DOI_TAC = {
+    GreenSM:        { phiCoDinh: 15000, phiMoiKm: 1000 },   // BRU-05, ≤ 20km
+    ShopeeExpress:  { phiCoDinh: 25000, phiMoiKm: 800 },    // BRU-05, > 20km
+}   // báo giá giả lập của API đối tác (giả định), dùng khi gọi API thật trả lỗi/chưa tích hợp
 
-function tinhPhiShip(khuVuc, hinhThuc):
-    if hinhThuc == 'TuDenLay' or hinhThuc == 'TuMangTra':
-        return 0
-    return BANG_PHI_SHIP[khuVuc]
+function chonDoiTacGiaoVan(khoangCachKm):
+    // BRU-05: <= 20km dung Green SM, > 20km dung Shopee Express
+    if khoangCachKm <= 20:
+        return 'GreenSM'
+    return 'ShopeeExpress'
 
-function tinhTienCoc(giaNiemYet, hinhThucNhan, khuVucNhan):
-    // BRU-01: coc = gia niem yet + phi ship chieu nhan x 2 (du tru ca 2 chieu), neu co giao van o chieu nhan
-    phiShipNhan = tinhPhiShip(khuVucNhan, hinhThucNhan)
+function tinhPhiShip(khoangCachKm):
+    // Goi API doi tac (giả lập) de lay bao gia theo khoang cach thuc te tai thoi diem dat
+    doiTac = chonDoiTacGiaoVan(khoangCachKm)
+    gia = BANG_GIA_DOI_TAC[doiTac]
+    phiShip = gia.phiCoDinh + gia.phiMoiKm * khoangCachKm
+    return { doiTac, phiShip }
+
+function tinhTienCoc(giaNiemYet, khoangCachKmNhan):
+    // BRU-01: coc = gia niem yet + phi ship chieu nhan x 2 (du tru ca 2 chieu, luon co giao van o chieu nhan)
+    { phiShip: phiShipNhan } = tinhPhiShip(khoangCachKmNhan)
     phiShipGiu = phiShipNhan * 2
     tienCoc = giaNiemYet + phiShipGiu
     return { tienCoc, phiShipGiu }
 
-function tinhChenhLechShipLucHoanCoc(phiShipGiu, hinhThucTra, khuVucTra):
+function tinhChenhLechShipLucHoanCoc(phiShipGiu, khoangCachKmTra):
     // FR-TTGV-08: so sanh phi da giu (BRU-01) voi phi thuc te phat sinh o chieu tra
-    phiShipTraThucTe = tinhPhiShip(khuVucTra, hinhThucTra)
+    { phiShip: phiShipTraThucTe } = tinhPhiShip(khoangCachKmTra)
     phiShipDaGiuChoChieuTra = phiShipGiu / 2
     chenhLech = phiShipDaGiuChoChieuTra - phiShipTraThucTe
     // chenhLech > 0  => hoan them cho khach (da giu nhieu hon thuc te)
@@ -342,15 +385,17 @@ function tinhChenhLechShipLucHoanCoc(phiShipGiu, hinhThucTra, khuVucTra):
 ''')
 ds.para(doc, "Hàm tinhTienCoc được gọi trong luồng đặt thuê (FR-CT-03, UC-04); hàm tinhChenhLechShipLucHoanCoc "
              "được gọi trong luồng quyết toán hoàn cọc (FR-CT-07, UC-07), cộng dồn kết quả với tinhPhatTreHan và "
-             "quy chế đền bù BRU-04 để ra số tiền hoàn cọc cuối cùng.")
+             "quy chế đền bù BRU-04 để ra số tiền hoàn cọc cuối cùng. khoangCachKm được tính từ toạ độ kho và toạ "
+             "độ địa chỉ khách (geocode địa chỉ qua API giả lập) tại thời điểm xác nhận địa chỉ nhận/trả.")
 
 # ===========================================================================
 # 16. LUONG XU LY WEBHOOK (MOI)
 # ===========================================================================
 ds.heading(doc, "16. Luồng xử lý webhook xác nhận thanh toán & vận chuyển", level=1)
 ds.para(doc, "Hiện thực BRU-06 (chỉ xác nhận thanh toán qua webhook, không cho xác nhận thủ công — FR-TTGV-07) và "
-             "FR-TTGV-05 (cập nhật trạng thái vận chuyển qua webhook Green SM). Hai webhook endpoint này là bề mặt "
-             "tấn công bên ngoài duy nhất không yêu cầu đăng nhập, nên phải xác thực chữ ký trước khi xử lý (khớp NFR-07).")
+             "FR-TTGV-05 (cập nhật trạng thái vận chuyển qua webhook Green SM hoặc Shopee Express, tuỳ đối tác đã "
+             "chọn cho lượt giao vận đó). Hai webhook endpoint này là bề mặt tấn công bên ngoài duy nhất không yêu "
+             "cầu đăng nhập, nên phải xác thực chữ ký trước khi xử lý (khớp NFR-07).")
 ds.code_block(doc, '''
 function xuLyWebhookThanhToan(request):
     // 1. Xac thuc nguon goc request
@@ -397,24 +442,27 @@ function xuLyWebhookVanChuyen(request):
 ds.heading(doc, "17. Đặc tả API Endpoints", level=1)
 ds.table(doc, ["Method", "Path", "Request body", "Response body", "Status"], [
     ["GET", "/api/products", "— (query: danhMuc, giaMin, giaMax, q)", "SanPham[]", "200"],
-    ["GET", "/api/products/:id", "—", "SanPham + linhKien[] + hopGame[]", "200 / 404"],
+    ["GET", "/api/products/:id", "—", "SanPham + linhKien[] + hopGame[] + danhGia[]", "200 / 404"],
+    ["POST", "/api/products/:id/reviews", "{soSao, nhanXet?}", "DanhGia", "201 / 403 (đơn chưa Completed)"],
     ["POST", "/api/auth/forgot-password", "{email}", "{sent: true}", "200"],
     ["POST", "/api/auth/reset-password", "{token, matKhauMoi}", "{reset: true}", "200 / 400 (token hết hiệu lực)"],
     ["GET", "/api/cart", "—", "{items: [{sanPhamId, soLuong, donGia}]}", "200"],
     ["POST", "/api/cart/items", "{sanPhamId, soLuong}", "{items: [...]}", "200 / 409 (vượt số lượng còn hàng)"],
     ["PATCH", "/api/cart/items/:sanPhamId", "{soLuong}", "{items: [...]}", "200 / 409"],
     ["DELETE", "/api/cart/items/:sanPhamId", "—", "{items: [...]}", "200"],
-    ["POST", "/api/orders", "{hinhThucNhan, khuVucNhan?} (tạo đơn từ giỏ hàng hiện tại)", "{donHangId, tienHang, phiShip}", "201 / 409 (hết hàng)"],
+    ["POST", "/api/orders", "{diaChiNhan} (tạo đơn từ giỏ hàng hiện tại, giao vận bắt buộc)", "{donHangId, tienHang, phiShip}", "201 / 409 (hết hàng)"],
     ["POST", "/api/orders/:id/cancel", "—", "{trangThai: 'Cancelled'}", "200 / 409 (đơn không ở Pending)"],
-    ["POST", "/api/rentals", "{sanPhamId, ngayBatDau, ngayKetThuc, hinhThucNhan, khuVucNhan?}", "{donHangId, tienThue, phiShip, tienCoc}", "201 / 409 (trùng lịch)"],
+    ["POST", "/api/rentals", "{sanPhamId, ngayBatDau, ngayKetThuc, diaChiNhan}", "{donHangId, tienThue, phiShip, tienCoc}", "201 / 409 (trùng lịch)"],
     ["POST", "/api/rentals/:id/confirm", "{nhanVienId}", "{trangThai: 'Confirmed'}", "200 / 404"],
     ["POST", "/api/rentals/:id/checkin", "{ketQuaKiemDem[]}", "{bienBanId, trangThaiHopGame}", "200"],
-    ["POST", "/api/rentals/:id/return-request", "{hinhThucTra, khuVucTra?}", "{maVanDon?, phiShipTra}", "200 / 409"],
+    ["POST", "/api/rentals/:id/return-request", "{diaChiTra}", "{maVanDon, phiShipTra}", "200 / 409"],
     ["POST", "/api/rentals/:id/settle", "{ngayTra}", "{tienPhat, tienDenBu, chenhLechShip, tienHoanCoc}", "200"],
     ["POST", "/api/payments/qr", "{donHangId, mucDich}", "{maQR, soTien}", "201"],
     ["POST", "/api/payments/webhook", "(từ MoMo) {maQR, trangThaiMoMo, soTien}", "{received: true}", "200 / 401 / 404"],
-    ["POST", "/api/shipments", "{chiTietDonId, chieu, khuVuc}", "{maVanDon, phiShip}", "201"],
-    ["POST", "/api/shipments/webhook", "(từ Green SM) {maVanDon, trangThaiMoi}", "{received: true}", "200 / 401 / 404"],
+    ["POST", "/api/shipments", "{chiTietDonId, chieu, diaChi}", "{maVanDon, doiTac, khoangCachKm, phiShip}", "201"],
+    ["POST", "/api/shipments/webhook", "(từ Green SM/Shopee Express) {maVanDon, trangThaiMoi}", "{received: true}", "200 / 401 / 404"],
+    ["GET", "/api/wallet", "—", "{soDu}", "200"],
+    ["POST", "/api/wallet/withdraw", "{soTien, soTaiKhoanNganHang}", "{soDuMoi}", "200 / 409 (số dư không đủ)"],
     ["POST", "/api/staff/login", "{email, matKhau}", "{token, vaiTro}", "200 / 401"],
     ["GET", "/api/staff", "— (chỉ Admin)", "NhanVien[]", "200 / 403"],
     ["POST", "/api/staff", "{hoTen, email, vaiTro} (chỉ Admin)", "NhanVien", "201 / 403"],
@@ -452,7 +500,7 @@ class DonThueController {
   +taoDonThue(dto) : DonHang
   +xacNhanDon(id, nhanVienId) : DonHang
   +ghiNhanKiemDem(id, ketQua[]) : BienBanKiemDem
-  +yeuCauTraHang(id, hinhThucTra, khuVuc) : GiaoVan
+  +yeuCauTraHang(id, diaChiTra) : GiaoVan
   +quyetToanHoanCoc(id) : DatCoc
 }
 class ThanhToanController {
@@ -460,8 +508,16 @@ class ThanhToanController {
   +xuLyWebhookThanhToan(payload) : void
 }
 class GiaoVanController {
-  +taoYeuCauGiaoVan(chiTietDonId, chieu, khuVuc) : GiaoVan
+  +taoYeuCauGiaoVan(chiTietDonId, chieu, diaChi) : GiaoVan
   +xuLyWebhookVanChuyen(payload) : void
+}
+class ViDienTuController {
+  +xemSoDu(khachHangId) : ViDienTu
+  +rutTien(khachHangId, soTien, soTaiKhoanNganHang) : ViDienTu
+}
+class DanhGiaController {
+  +themDanhGia(khachHangId, sanPhamId, donHangId, soSao, nhanXet) : DanhGia
+  +layDanhGiaTheoSanPham(sanPhamId) : DanhGia[]
 }
 class AuthController {
   +dangKy(dto) : KhachHang
@@ -490,7 +546,7 @@ class GioHangService {
   +xoaSanPham(khachHangId, sanPhamId) : GioHang
 }
 class DonMuaService {
-  +taoDonMua(khachHangId, hinhThucNhan, khuVucNhan) : DonHang
+  +taoDonMua(khachHangId, diaChiNhan) : DonHang
   +huyDon(id) : void
 }
 class DonThueService {
@@ -503,10 +559,10 @@ class KhoService {
   +capNhatTrangThaiHopGame(id, trangThai) : void
 }
 class CocService {
-  +tinhTienCoc(giaNiemYet, hinhThucNhan, khuVuc) : {tienCoc, phiShipGiu}
+  +tinhTienCoc(giaNiemYet, khoangCachKmNhan) : {tienCoc, phiShipGiu}
   +tinhPhatTreHan(donId) : Decimal
   +tinhDenBu(donId) : Decimal
-  +tinhChenhLechShipLucHoanCoc(phiShipGiu, hinhThucTra, khuVuc) : Decimal
+  +tinhChenhLechShipLucHoanCoc(phiShipGiu, khoangCachKmTra) : Decimal
   +hoanCoc(donId) : DatCoc
 }
 class ThanhToanService {
@@ -515,9 +571,21 @@ class ThanhToanService {
   +xuLyWebhook(payload) : void
 }
 class GiaoVanService {
-  +tinhPhiShip(khuVuc, hinhThuc) : Decimal
-  +taoYeuCauGiaoNhan(chiTietDonId, chieu, khuVuc) : GiaoVan
+  +tinhKhoangCach(diaChiKho, diaChiKhach) : Decimal
+  +chonDoiTacGiaoVan(khoangCachKm) : DoiTacGiaoVan
+  +tinhPhiShip(khoangCachKm) : {doiTac, phiShip}
+  +taoYeuCauGiaoNhan(chiTietDonId, chieu, diaChi) : GiaoVan
   +xuLyWebhook(payload) : void
+}
+class ViDienTuService {
+  +xemSoDu(khachHangId) : Decimal
+  +congTien(khachHangId, soTien) : ViDienTu
+  +rutTien(khachHangId, soTien, soTaiKhoanNganHang) : ViDienTu
+}
+class DanhGiaService {
+  +themDanhGia(khachHangId, sanPhamId, donHangId, soSao, nhanXet) : DanhGia
+  +tinhDiemTrungBinh(sanPhamId) : Decimal
+  +kiemTraDuocDanhGia(khachHangId, donHangId) : boolean
 }
 class AuthService {
   +dangKy(dto) : KhachHang
@@ -546,6 +614,8 @@ DonThueController --> CocService : gọi
 DonThueController --> GiaoVanService : gọi
 ThanhToanController --> ThanhToanService : gọi
 GiaoVanController --> GiaoVanService : gọi
+ViDienTuController --> ViDienTuService : gọi
+DanhGiaController --> DanhGiaService : gọi
 AuthController --> AuthService : gọi
 AdminController --> NhanVienService : gọi
 AdminController --> SanPhamService : gọi
@@ -556,6 +626,8 @@ DonMuaService --> SanPhamService : gọi (kiểm tra còn hàng)
 DonThueService --> CocService : gọi
 DonThueService --> GiaoVanService : gọi
 CocService --> GiaoVanService : gọi (tính chênh lệch ship)
+CocService --> ViDienTuService : gọi (hoàn cọc/chênh lệch vào ví, BRU-06)
+DanhGiaService --> DonThueService : gọi (kiểm tra đơn đã Completed)
 @enduml""")
 ds.caption(doc, "Hình 1 – Design Class Diagram v2 (Service/Controller)")
 

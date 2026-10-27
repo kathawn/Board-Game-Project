@@ -10,6 +10,17 @@ import { Reveal } from "@/components/Reveal";
 import { getProductBySlug, formatVND, giaThueNgayDau } from "@/lib/products";
 import type { RentalCartLine } from "@/lib/rentals/store";
 
+interface TienCocInfo {
+  diaChiNhan: string;
+  doiTac: "GreenSM" | "ShopeeExpress";
+  tongTienCoc: number;
+}
+
+const TEN_DOI_TAC: Record<TienCocInfo["doiTac"], string> = {
+  GreenSM: "Green SM",
+  ShopeeExpress: "Shopee Express",
+};
+
 function soNgay(startDate: string, endDate: string): number {
   const ms = new Date(endDate).getTime() - new Date(startDate).getTime();
   return Math.round(ms / 86_400_000);
@@ -24,23 +35,31 @@ export default function CartPage() {
   const [editEnd, setEditEnd] = useState("");
   const [editError, setEditError] = useState<string | null>(null);
   const [savingEdit, setSavingEdit] = useState(false);
+  const [coc, setCoc] = useState<TienCocInfo>({ diaChiNhan: "", doiTac: "GreenSM", tongTienCoc: 0 });
+
+  const reloadCart = async () => {
+    const response = await fetch("/api/rental-cart");
+    if (!response.ok) {
+      router.push("/login");
+      return;
+    }
+    const data = await response.json();
+    setLines(data.lines);
+    setCoc({ diaChiNhan: data.coc.diaChiNhan, doiTac: data.coc.doiTac, tongTienCoc: data.coc.tongTienCoc });
+  };
 
   useEffect(() => {
     (async () => {
-      const response = await fetch("/api/rental-cart");
-      if (!response.ok) {
-        router.push("/login");
-        return;
-      }
-      const data = await response.json();
-      setLines(data.lines);
+      await reloadCart();
       setLoading(false);
     })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router]);
 
   const handleRemove = async (id: string) => {
     setLines((prev) => prev.filter((l) => l.id !== id));
     await fetch(`/api/rental-cart/${id}`, { method: "DELETE" });
+    await reloadCart();
   };
 
   const startEdit = (line: RentalCartLine) => {
@@ -217,17 +236,42 @@ export default function CartPage() {
                 ))}
               </div>
 
-              <Reveal className="mt-8 flex items-center justify-between rounded bg-paper p-6 shadow-[0_20px_40px_-20px_rgba(42,31,26,0.2)]">
-                <span className="text-sm font-semibold uppercase tracking-wider text-ink-soft">
-                  Tạm tính tiền thuê
-                </span>
-                <span className="font-heading text-xl font-bold text-ink">
-                  {formatVND(tongTienThue)}
-                </span>
+              <Reveal className="mt-8 rounded bg-paper p-6 shadow-[0_20px_40px_-20px_rgba(42,31,26,0.2)]">
+                <div className="mb-4 flex items-start justify-between gap-4 text-xs text-ink-soft">
+                  <span>
+                    Địa chỉ nhận hàng (hồ sơ cá nhân):{" "}
+                    <span className="font-semibold text-ink">
+                      {coc.diaChiNhan || "Chưa cập nhật — vào hồ sơ cá nhân để thêm địa chỉ."}
+                    </span>
+                    <br />
+                    Đối tác giao vận dự kiến (BRU-05): <span className="font-semibold text-ink">{TEN_DOI_TAC[coc.doiTac]}</span>
+                  </span>
+                  <Link href="/profile" className="shrink-0 font-semibold text-wine hover:underline">
+                    Sửa
+                  </Link>
+                </div>
+
+                <div className="flex items-center justify-between border-t border-ink/8 pt-4">
+                  <span className="text-sm font-semibold uppercase tracking-wider text-ink-soft">
+                    Tạm tính tiền thuê
+                  </span>
+                  <span className="font-heading text-lg font-semibold text-ink">
+                    {formatVND(tongTienThue)}
+                  </span>
+                </div>
+                <div className="mt-2 flex items-center justify-between">
+                  <span className="text-sm font-semibold uppercase tracking-wider text-ink-soft">
+                    Tổng tiền cọc (BRU-01)
+                  </span>
+                  <span className="font-heading text-xl font-bold text-wine">
+                    {formatVND(coc.tongTienCoc)}
+                  </span>
+                </div>
               </Reveal>
 
               <p className="mt-3 text-center text-xs text-ink-soft">
-                Tiền cọc (BRU-01) và phí giao vận sẽ hiển thị ở bước xác nhận đặt thuê — chưa nằm trong phạm vi FR-CT-01.
+                Tiền cọc = giá niêm yết mỗi sản phẩm + phí ship ước tính chiều giao (do {TEN_DOI_TAC[coc.doiTac]} báo
+                giá theo khoảng cách, BRU-05) × 2, dự trù cho cả hai chiều giao vận bắt buộc (FR-CT-03).
               </p>
             </>
           )}
