@@ -331,6 +331,21 @@ export function giaThueNgayDau(giaNiemYet: number): number {
   return Math.round(giaNiemYet * 0.1);
 }
 
+/** FR-CT-04 (BRU-02, BR-02, UC-04): tiền thuê N ngày = tổng đơn giá lũy tiến
+ * giảm dần theo từng ngày — ngày 1 = 10% giá niêm yết, ngày 2-10 = 7%/ngày,
+ * ngày 11+ = 5%/ngày. */
+export function tinhTienThueNgay(giaNiemYet: number, soNgay: number): number {
+  if (soNgay <= 0) return 0;
+  const ngay1 = Math.min(soNgay, 1);
+  const ngay2Den10 = Math.max(0, Math.min(soNgay, 10) - 1);
+  const ngay11TroDi = Math.max(0, soNgay - 10);
+  return (
+    Math.round(giaNiemYet * 0.1) * ngay1 +
+    Math.round(giaNiemYet * 0.07) * ngay2Den10 +
+    Math.round(giaNiemYet * 0.05) * ngay11TroDi
+  );
+}
+
 export function formatVND(amount: number): string {
   return amount.toLocaleString("vi-VN") + "đ";
 }

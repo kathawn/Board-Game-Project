@@ -18,6 +18,18 @@ const TRANG_THAI_LABEL: Record<TrangThaiDon, { label: string; className: string 
   Closed: { label: "Đã đóng", className: "bg-forest/15 text-forest" },
 };
 
+/** FR-CT-05: đơn thuê Pending ở luồng này đã bỏ qua bước thanh toán QR thật
+ * (UC-10/FR-TTGV-06/07 ngoài phạm vi) — Pending ở đây nghĩa là "đã tạo đơn,
+ * đang chờ Staff xác nhận" (khớp đúng chữ dùng ở /cart và
+ * /staff/rental-orders), không phải "chờ thanh toán" như đơn mua demo cũ
+ * (ví dụ DH-00302) — nên nhãn Pending phải khác nhau theo loại đơn. */
+function trangThaiLabel(order: DonHang): { label: string; className: string } {
+  if (order.trangThai === "Pending" && order.loai === "Thue") {
+    return { label: "Chờ xác nhận", className: "bg-ink/10 text-ink-soft" };
+  }
+  return TRANG_THAI_LABEL[order.trangThai];
+}
+
 type Loc = "all" | LoaiDon;
 
 export default function OrdersPage() {
@@ -125,7 +137,7 @@ export default function OrdersPage() {
           ) : (
             <div className="flex flex-col gap-4">
               {orders.map((order, i) => {
-                const status = TRANG_THAI_LABEL[order.trangThai];
+                const status = trangThaiLabel(order);
                 return (
                   <Reveal key={order.id} delay={i * 60}>
                     <article className="flex flex-col gap-3 rounded bg-paper p-5 shadow-[0_20px_40px_-20px_rgba(42,31,26,0.2)] sm:flex-row sm:items-center sm:justify-between sm:gap-6">
