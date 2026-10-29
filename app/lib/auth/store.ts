@@ -9,18 +9,18 @@ export type Account = {
 };
 
 export interface AccountStore {
-  get(email: string): Account | undefined;
-  save(account: Account): void;
+  get(email: string): Promise<Account | undefined>;
+  save(account: Account): Promise<void>;
 }
 
 export function createInMemoryAccountStore(): AccountStore {
   const accounts = new Map<string, Account>();
 
   return {
-    get(email) {
+    async get(email) {
       return accounts.get(email);
     },
-    save(account) {
+    async save(account) {
       accounts.set(account.email, account);
     },
   };

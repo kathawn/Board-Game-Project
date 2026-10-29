@@ -5,5 +5,5 @@ import { rentalOrderStore } from "@/lib/rentals/server";
  * MVP đã thống nhất, route này tạm không yêu cầu đăng nhập Staff, chỉ demo
  * đúng bước Pending → Confirmed của UC-05. */
 export async function GET() {
-  return Response.json({ ok: true, orders: rentalOrderStore.list() });
+  return Response.json({ ok: true, orders: await rentalOrderStore.list() });
 }

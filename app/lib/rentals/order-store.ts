@@ -1,9 +1,15 @@
-/** FR-CT-05 (BR-01, UC-05/UC-06): đơn thuê tạo từ giỏ thuê khi khách xác nhận
- * đặt thuê — mỗi dòng giữ lại tiền thuê (FR-CT-04/BRU-02) và tiền cọc
- * (FR-CT-03/BRU-01) đã tính tại thời điểm tạo đơn, để Staff xác nhận (UC-05)
+import type { PrismaClient, Prisma } from "../generated/prisma/client";
+import { toIso, TRANG_THAI_DANG_GIU } from "../db/tx";
+import { tinhPhiShip, uocTinhKhoangCachKm } from "./deposit";
+import { toShipment } from "../shipping/service";
+import type { Shipment } from "../shipping/types";
+
+/** FR-CT-05 (BR-01, UC-05/UC-06): đơn thuê. Đơn chỉ được TẠO bởi webhook thanh toán cọc thành công
+ * (lib/payments/service.ts, UC-10); store này chỉ đọc và xác nhận. Mỗi dòng giữ lại tiền thuê
+ * (FR-CT-04/BRU-02) và tiền cọc (FR-CT-03/BRU-01) đã tính lúc tạo đơn, để Staff xác nhận (UC-05)
  * không cần tính lại và không bị ảnh hưởng nếu giá niêm yết đổi sau đó. */
 
-export type TrangThaiDonThue = "Pending" | "Confirmed";
+export type TrangThaiDonThue = "Pending" | "Confirmed" | "Active" | "Overdue";
 
 export interface RentalOrderLine {
   productSlug: string;
@@ -15,6 +21,7 @@ export interface RentalOrderLine {
 }
 
 export interface RentalOrder {
+  /** Mã hiển thị (DT-00001); khoá chính UUID chỉ dùng nội bộ trong DB. */
   id: string;
   email: string;
   trangThai: TrangThaiDonThue;
@@ -24,68 +31,102 @@ export interface RentalOrder {
   lines: RentalOrderLine[];
   tongTienThue: number;
   tongTienCoc: number;
+  /** UC-10: khoản thanh toán cọc đã tạo ra đơn này. */
+  paymentId?: string;
+  /** FR-TTGV-03/04/05: vận đơn hai chiều đã tạo (gộp mọi dòng đơn; trống cho tới khi bàn giao). */
+  shipments: Shipment[];
 }
 
 export interface RentalOrderStore {
-  list(): RentalOrder[];
-  get(id: string): RentalOrder | undefined;
-  create(input: Omit<RentalOrder, "id" | "trangThai" | "ngayTao">): RentalOrder;
+  list(): Promise<RentalOrder[]>;
+  get(id: string): Promise<RentalOrder | undefined>;
   /** FR-CT-05/UC-05: Staff xác nhận đơn — chỉ hợp lệ khi đơn đang ở Pending. */
-  confirm(id: string): { ok: true; order: RentalOrder } | { ok: false; error: string };
-  /** FR-CT-02/BR-05: khoảng ngày của một sản phẩm trong mọi đơn thuê "còn
-   * hiệu lực" (Pending hoặc Confirmed — chưa Completed/huỷ) để giỏ thuê
-   * (lib/rentals/store.ts) chặn trùng lịch với đơn thật, không chỉ với dữ
-   * liệu demo tĩnh. */
-  listActiveDateRangesForProduct(productSlug: string): { startDate: string; endDate: string }[];
+  confirm(id: string): Promise<{ ok: true; order: RentalOrder } | { ok: false; error: string }>;
+  /** FR-CT-02/BR-05: khoảng ngày của một sản phẩm trong mọi đơn thuê còn hiệu lực. */
+  listActiveDateRangesForProduct(productSlug: string): Promise<{ startDate: string; endDate: string }[]>;
 }
 
-export function createInMemoryRentalOrderStore(): RentalOrderStore {
-  const orders = new Map<string, RentalOrder>();
-  let nextId = 1;
+const includeOrder = {
+  khachHang: { select: { email: true } },
+  chiTiet: { include: { sanPham: { select: { slug: true, ten: true } }, giaoVan: true } },
+  datCoc: true,
+  thanhToan: { select: { maThanhToan: true }, take: 1 },
+} satisfies Prisma.DonHangInclude;
 
+type OrderRow = Prisma.DonHangGetPayload<{ include: typeof includeOrder }>;
+
+function toRentalOrder(row: OrderRow): RentalOrder {
+  const lines: RentalOrderLine[] = row.chiTiet.map((c) => ({
+    productSlug: c.sanPham.slug,
+    productName: c.sanPham.ten,
+    startDate: c.ngayBatDau ? toIso(c.ngayBatDau) : "",
+    endDate: c.ngayKetThuc ? toIso(c.ngayKetThuc) : "",
+    tienThue: Number(c.tienThue ?? 0),
+    tienCoc: Number(c.tienCoc ?? 0),
+  }));
+  const diaChiNhan = row.chiTiet[0]?.diaChiNhan ?? "";
   return {
-    list() {
-      return [...orders.values()].sort((a, b) => (a.ngayTao < b.ngayTao ? 1 : -1));
+    id: row.maDon,
+    email: row.khachHang.email,
+    trangThai: (["Confirmed", "Active", "Overdue"].includes(row.trangThai) ? row.trangThai : "Pending") as TrangThaiDonThue,
+    ngayTao: toIso(row.ngayTao),
+    diaChiNhan,
+    // Đối tác giao vận dự kiến chọn theo khoảng cách (BRU-05) — suy ra từ địa chỉ nhận; vận đơn thật nằm
+    // ở `shipments` sau khi Staff bàn giao (UC-06).
+    doiTac: tinhPhiShip(uocTinhKhoangCachKm(diaChiNhan)).doiTac,
+    lines,
+    tongTienThue: lines.reduce((sum, l) => sum + l.tienThue, 0),
+    tongTienCoc: row.datCoc ? Number(row.datCoc.soTien) : lines.reduce((sum, l) => sum + l.tienCoc, 0),
+    paymentId: row.thanhToan[0]?.maThanhToan,
+    shipments: row.chiTiet.flatMap((c) => c.giaoVan.filter((g) => g.maVanDon).map(toShipment)),
+  };
+}
+
+export function createPrismaRentalOrderStore(getDb: () => PrismaClient): RentalOrderStore {
+  return {
+    async list() {
+      const rows = await getDb().donHang.findMany({
+        // Staff xử lý đơn chờ xác nhận (UC-05), đã xác nhận chờ bàn giao (UC-06) và đang thuê/quá hạn để theo
+        // dõi vận chuyển (UC-12); Completed/Closed thuộc UC-07.
+        where: { loai: "Thue", trangThai: { in: ["Pending", "Confirmed", "Active", "Overdue"] } },
+        include: includeOrder,
+        orderBy: { ngayTao: "desc" },
+      });
+      return rows.map(toRentalOrder);
     },
 
-    get(id) {
-      return orders.get(id);
+    async get(id) {
+      const row = await getDb().donHang.findUnique({ where: { maDon: id }, include: includeOrder });
+      return row && row.loai === "Thue" ? toRentalOrder(row) : undefined;
     },
 
-    create(input) {
-      const order: RentalOrder = {
-        ...input,
-        id: `DT-${String(nextId++).padStart(5, "0")}`,
-        trangThai: "Pending",
-        ngayTao: new Date().toISOString().slice(0, 10),
-      };
-      orders.set(order.id, order);
-      return order;
-    },
-
-    confirm(id) {
-      const order = orders.get(id);
-      if (!order) {
-        return { ok: false, error: "Không tìm thấy đơn thuê." };
+    async confirm(id) {
+      const db = getDb();
+      // Một câu UPDATE có điều kiện: hai Staff bấm xác nhận cùng lúc thì chỉ một người chuyển được.
+      const updated = await db.donHang.updateMany({
+        where: { maDon: id, loai: "Thue", trangThai: "Pending" },
+        data: { trangThai: "Confirmed" },
+      });
+      if (updated.count === 0) {
+        const exists = await db.donHang.findUnique({ where: { maDon: id }, select: { loai: true } });
+        return {
+          ok: false,
+          error: exists?.loai === "Thue" ? "Đơn thuê không ở trạng thái chờ xác nhận." : "Không tìm thấy đơn thuê.",
+        };
       }
-      if (order.trangThai !== "Pending") {
-        return { ok: false, error: "Đơn thuê không ở trạng thái chờ xác nhận." };
-      }
-
-      const confirmed: RentalOrder = { ...order, trangThai: "Confirmed" };
-      orders.set(id, confirmed);
-      return { ok: true, order: confirmed };
+      return { ok: true, order: (await this.get(id))! };
     },
 
-    listActiveDateRangesForProduct(productSlug) {
-      // TrangThaiDonThue hiện chỉ có Pending/Confirmed (chưa có Active/
-      // Completed/Closed như state machine đầy đủ ở SRS 3.6 vì UC-06/UC-07
-      // chưa code) — nên mọi đơn trong store này đều "còn hiệu lực" theo
-      // nghĩa của FR-CT-02.
-      return [...orders.values()]
-        .flatMap((order) => order.lines)
-        .filter((line) => line.productSlug === productSlug)
-        .map(({ startDate, endDate }) => ({ startDate, endDate }));
+    async listActiveDateRangesForProduct(productSlug) {
+      const rows = await getDb().chiTietDonHang.findMany({
+        where: {
+          sanPham: { slug: productSlug },
+          ngayBatDau: { not: null },
+          donHang: { loai: "Thue", trangThai: { in: TRANG_THAI_DANG_GIU } },
+        },
+        select: { ngayBatDau: true, ngayKetThuc: true },
+      });
+      return rows.map((r) => ({ startDate: toIso(r.ngayBatDau!), endDate: toIso(r.ngayKetThuc!) }));
     },
   };
 }

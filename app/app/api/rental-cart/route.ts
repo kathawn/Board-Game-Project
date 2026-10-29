@@ -20,7 +20,7 @@ export async function GET(request: Request) {
     return Response.json({ error: "Chưa đăng nhập." }, { status: 401 });
   }
 
-  const lines = rentalCartStore.list(email);
+  const lines = await rentalCartStore.list(email);
   const profileResult = await authService.getProfile(email);
   const diaChiNhan = profileResult.ok ? profileResult.profile.diaChi : "";
   const khoangCachKm = uocTinhKhoangCachKm(diaChiNhan);
@@ -66,7 +66,7 @@ export async function POST(request: Request) {
     return Response.json({ error: "Không tìm thấy sản phẩm." }, { status: 404 });
   }
 
-  const result = rentalCartStore.addLine(email, {
+  const result = await rentalCartStore.addLine(email, {
     productSlug,
     productName: product.ten,
     startDate,
