@@ -6,3 +6,8 @@ __pycache__/
 ~$*.xlsx
 ~$*.pptx
 .$*.drawio.bkp
+
+# Khong dua len GitHub
+scripts/
+BoardVerse_Checklist_Chuc_Nang.docx
+Danh_Sach_Chuc_Nang_BoardVerse_De_Xuat_MVP.md
