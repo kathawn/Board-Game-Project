@@ -24,14 +24,14 @@ export interface ActiveReservation {
 export type AddLineResult = { ok: true; line: RentalCartLine } | { ok: false; error: string };
 
 export interface RentalCartStore {
-  list(email: string): RentalCartLine[];
+  list(email: string): Promise<RentalCartLine[]>;
   /** productName chỉ dùng để nêu rõ tên sản phẩm trong thông báo lỗi trùng
    * lịch (FR-CT-02: "...nêu rõ sản phẩm bị trùng") — store không tự tra cứu
    * catalog sản phẩm, gọi nơi khác (route) phải resolve tên trước khi gọi. */
   addLine(
     email: string,
     input: { productSlug: string; productName: string; startDate: string; endDate: string },
-  ): AddLineResult;
+  ): Promise<AddLineResult>;
   /** FR-CT-09: sửa ngày thuê của một dòng đã có trong giỏ — vẫn phải qua lại
    * đúng kiểm tra hợp lệ ngày + trùng lịch (FR-CT-02) như khi thêm mới, chỉ
    * loại trừ chính dòng đang sửa khỏi tập so trùng trong giỏ. */
@@ -39,10 +39,10 @@ export interface RentalCartStore {
     email: string,
     lineId: string,
     input: { productName: string; startDate: string; endDate: string },
-  ): AddLineResult;
-  removeLine(email: string, lineId: string): void;
+  ): Promise<AddLineResult>;
+  removeLine(email: string, lineId: string): Promise<void>;
   /** FR-CT-05: xoá toàn bộ giỏ thuê sau khi đã chuyển thành đơn thuê (checkout). */
-  clear(email: string): void;
+  clear(email: string): Promise<void>;
 }
 
 /** Đơn thuê còn hiệu lực đã tồn tại trong hệ thống TRƯỚC khi có luồng
@@ -69,20 +69,20 @@ function rangesOverlap(aStart: string, aEnd: string, bStart: string, bEnd: strin
  * phải theo trạng thái) có trùng khoảng ngày cho một sản phẩm — tiêm từ
  * ngoài vào (lib/rentals/server.ts) để tránh phụ thuộc vòng tròn giữa
  * store.ts và order-store.ts. */
-export type GetActiveReservations = (productSlug: string) => ActiveReservation[];
+export type GetActiveReservations = (productSlug: string) => Promise<ActiveReservation[]>;
 
 export function createInMemoryRentalCartStore(
-  getActiveReservations: GetActiveReservations = () => [],
+  getActiveReservations: GetActiveReservations = async () => [],
 ): RentalCartStore {
   const cartsByEmail = new Map<string, RentalCartLine[]>();
   let nextId = 1;
 
   return {
-    list(email) {
+    async list(email) {
       return cartsByEmail.get(email) ?? [];
     },
 
-    addLine(email, { productSlug, productName, startDate, endDate }) {
+    async addLine(email, { productSlug, productName, startDate, endDate }) {
       if (!isValidDate(startDate) || !isValidDate(endDate)) {
         return { ok: false, error: "Ngày bắt đầu/kết thúc không hợp lệ." };
       }
@@ -93,7 +93,7 @@ export function createInMemoryRentalCartStore(
       const existingLines = cartsByEmail.get(email) ?? [];
       const linesForSameProduct = existingLines.filter((l) => l.productSlug === productSlug);
       const reservations = ACTIVE_RESERVATIONS[productSlug] ?? [];
-      const realOrders = getActiveReservations(productSlug);
+      const realOrders = await getActiveReservations(productSlug);
 
       const conflict = [...reservations, ...realOrders, ...linesForSameProduct].some((r) =>
         rangesOverlap(startDate, endDate, r.startDate, r.endDate),
@@ -110,7 +110,7 @@ export function createInMemoryRentalCartStore(
       return { ok: true, line };
     },
 
-    updateLine(email, lineId, { productName, startDate, endDate }) {
+    async updateLine(email, lineId, { productName, startDate, endDate }) {
       if (!isValidDate(startDate) || !isValidDate(endDate)) {
         return { ok: false, error: "Ngày bắt đầu/kết thúc không hợp lệ." };
       }
@@ -128,7 +128,7 @@ export function createInMemoryRentalCartStore(
         (l) => l.productSlug === target.productSlug && l.id !== lineId,
       );
       const reservations = ACTIVE_RESERVATIONS[target.productSlug] ?? [];
-      const realOrders = getActiveReservations(target.productSlug);
+      const realOrders = await getActiveReservations(target.productSlug);
 
       const conflict = [...reservations, ...realOrders, ...linesForSameProduct].some((r) =>
         rangesOverlap(startDate, endDate, r.startDate, r.endDate),
@@ -148,12 +148,12 @@ export function createInMemoryRentalCartStore(
       return { ok: true, line: updated };
     },
 
-    removeLine(email, lineId) {
+    async removeLine(email, lineId) {
       const existingLines = cartsByEmail.get(email) ?? [];
       cartsByEmail.set(email, existingLines.filter((l) => l.id !== lineId));
     },
 
-    clear(email) {
+    async clear(email) {
       cartsByEmail.set(email, []);
     },
   };

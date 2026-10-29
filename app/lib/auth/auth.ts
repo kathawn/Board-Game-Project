@@ -56,11 +56,11 @@ export function createAuthService(
   return {
     async register({ email, password, hoTen }) {
       const normalizedEmail = normalizeEmail(email);
-      if (store.get(normalizedEmail)) {
+      if (await store.get(normalizedEmail)) {
         return { ok: false, error: "Email đã được sử dụng." };
       }
 
-      store.save({
+      await store.save({
         email: normalizedEmail,
         passwordHash: hashPassword(password),
         failedAttempts: 0,
@@ -74,7 +74,7 @@ export function createAuthService(
 
     async login({ email, password }) {
       const normalizedEmail = normalizeEmail(email);
-      const account = store.get(normalizedEmail);
+      const account = await store.get(normalizedEmail);
       if (!account) {
         return { ok: false, error: "Email hoặc mật khẩu không đúng." };
       }
@@ -89,17 +89,17 @@ export function createAuthService(
       if (!verifyPassword(password, account.passwordHash)) {
         const failedAttempts = attemptsBeforeThisTry + 1;
         const lockedUntil = failedAttempts >= MAX_FAILED_ATTEMPTS ? now() + LOCKOUT_DURATION_MS : null;
-        store.save({ ...account, failedAttempts, lockedUntil });
+        await store.save({ ...account, failedAttempts, lockedUntil });
         return { ok: false, error: "Email hoặc mật khẩu không đúng." };
       }
 
-      store.save({ ...account, failedAttempts: 0, lockedUntil: null });
+      await store.save({ ...account, failedAttempts: 0, lockedUntil: null });
       return { ok: true, token: sessions.create(normalizedEmail) };
     },
 
     async getProfile(email) {
       const normalizedEmail = normalizeEmail(email);
-      const account = store.get(normalizedEmail);
+      const account = await store.get(normalizedEmail);
       if (!account) {
         return { ok: false, error: "Không tìm thấy tài khoản." };
       }
@@ -117,18 +117,18 @@ export function createAuthService(
 
     async updateProfile(email, { hoTen, sdt, diaChi }) {
       const normalizedEmail = normalizeEmail(email);
-      const account = store.get(normalizedEmail);
+      const account = await store.get(normalizedEmail);
       if (!account) {
         return { ok: false, error: "Không tìm thấy tài khoản." };
       }
 
-      store.save({ ...account, hoTen, sdt, diaChi });
+      await store.save({ ...account, hoTen, sdt, diaChi });
       return { ok: true, profile: { email: normalizedEmail, hoTen, sdt, diaChi } };
     },
 
     async changePassword(email, { oldPassword, newPassword }) {
       const normalizedEmail = normalizeEmail(email);
-      const account = store.get(normalizedEmail);
+      const account = await store.get(normalizedEmail);
       if (!account) {
         return { ok: false, error: "Không tìm thấy tài khoản." };
       }
@@ -137,7 +137,7 @@ export function createAuthService(
         return { ok: false, error: "Mật khẩu hiện tại không đúng." };
       }
 
-      store.save({ ...account, passwordHash: hashPassword(newPassword) });
+      await store.save({ ...account, passwordHash: hashPassword(newPassword) });
       return { ok: true };
     },
   };

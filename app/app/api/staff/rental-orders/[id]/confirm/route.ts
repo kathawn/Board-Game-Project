@@ -9,7 +9,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
-  const result = rentalOrderStore.confirm(id);
+  const result = await rentalOrderStore.confirm(id);
 
   if (!result.ok) {
     return Response.json({ error: result.error }, { status: 409 });
