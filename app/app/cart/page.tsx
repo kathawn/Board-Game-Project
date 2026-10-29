@@ -7,12 +7,13 @@ import { Trash2, CalendarRange, Pencil } from "lucide-react";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { Reveal } from "@/components/Reveal";
-import { getProductBySlug, formatVND, giaThueNgayDau } from "@/lib/products";
+import { getProductBySlug, formatVND } from "@/lib/products";
 import type { RentalCartLine } from "@/lib/rentals/store";
 
 interface TienCocInfo {
   diaChiNhan: string;
   doiTac: "GreenSM" | "ShopeeExpress";
+  tongTienThue: number;
   tongTienCoc: number;
 }
 
@@ -35,7 +36,16 @@ export default function CartPage() {
   const [editEnd, setEditEnd] = useState("");
   const [editError, setEditError] = useState<string | null>(null);
   const [savingEdit, setSavingEdit] = useState(false);
-  const [coc, setCoc] = useState<TienCocInfo>({ diaChiNhan: "", doiTac: "GreenSM", tongTienCoc: 0 });
+  const [checkingOut, setCheckingOut] = useState(false);
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  const [checkoutOrderId, setCheckoutOrderId] = useState<string | null>(null);
+  const [dongGia, setDongGia] = useState<{ lineId: string; tienThue: number; tienCoc: number }[]>([]);
+  const [coc, setCoc] = useState<TienCocInfo>({
+    diaChiNhan: "",
+    doiTac: "GreenSM",
+    tongTienThue: 0,
+    tongTienCoc: 0,
+  });
 
   const reloadCart = async () => {
     const response = await fetch("/api/rental-cart");
@@ -45,7 +55,13 @@ export default function CartPage() {
     }
     const data = await response.json();
     setLines(data.lines);
-    setCoc({ diaChiNhan: data.coc.diaChiNhan, doiTac: data.coc.doiTac, tongTienCoc: data.coc.tongTienCoc });
+    setDongGia(data.coc.dongGia);
+    setCoc({
+      diaChiNhan: data.coc.diaChiNhan,
+      doiTac: data.coc.doiTac,
+      tongTienThue: data.coc.tongTienThue,
+      tongTienCoc: data.coc.tongTienCoc,
+    });
   };
 
   useEffect(() => {
@@ -98,15 +114,34 @@ export default function CartPage() {
   };
 
   const rows = lines
-    .map((line) => ({ line, product: getProductBySlug(line.productSlug) }))
-    .filter((row): row is { line: RentalCartLine; product: NonNullable<ReturnType<typeof getProductBySlug>> } =>
-      Boolean(row.product),
+    .map((line) => ({
+      line,
+      product: getProductBySlug(line.productSlug),
+      tienThue: dongGia.find((d) => d.lineId === line.id)?.tienThue ?? 0,
+    }))
+    .filter(
+      (row): row is { line: RentalCartLine; product: NonNullable<ReturnType<typeof getProductBySlug>>; tienThue: number } =>
+        Boolean(row.product),
     );
 
-  const tongTienThue = rows.reduce(
-    (sum, { line, product }) => sum + giaThueNgayDau(product.giaNiemYet) * soNgay(line.startDate, line.endDate),
-    0,
-  );
+  const handleCheckout = async () => {
+    setCheckoutError(null);
+    setCheckingOut(true);
+    try {
+      const response = await fetch("/api/rental-cart/checkout", { method: "POST" });
+      const data = await response.json();
+
+      if (!response.ok) {
+        setCheckoutError(data.error ?? "Đã có lỗi xảy ra, vui lòng thử lại.");
+        return;
+      }
+
+      setCheckoutOrderId(data.order.id);
+      await reloadCart();
+    } finally {
+      setCheckingOut(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -140,15 +175,27 @@ export default function CartPage() {
 
           {rows.length === 0 ? (
             <Reveal className="rounded bg-paper p-12 text-center text-sm text-ink-soft">
-              Giỏ thuê đang trống.{" "}
-              <Link href="/products" className="font-semibold text-wine hover:underline">
-                Xem sản phẩm cho thuê
-              </Link>
+              {checkoutOrderId ? (
+                <>
+                  Đã tạo đơn thuê <span className="font-semibold text-ink">{checkoutOrderId}</span> ở
+                  trạng thái &quot;Chờ xác nhận&quot; (Pending) — chờ nhân viên xác nhận đã thu cọc (FR-CT-05).{" "}
+                  <Link href="/orders" className="font-semibold text-wine hover:underline">
+                    Xem lịch sử đơn
+                  </Link>
+                </>
+              ) : (
+                <>
+                  Giỏ thuê đang trống.{" "}
+                  <Link href="/products" className="font-semibold text-wine hover:underline">
+                    Xem sản phẩm cho thuê
+                  </Link>
+                </>
+              )}
             </Reveal>
           ) : (
             <>
               <div className="flex flex-col gap-4">
-                {rows.map(({ line, product }, i) => (
+                {rows.map(({ line, product, tienThue }, i) => (
                   <Reveal key={line.id} delay={i * 60}>
                     <article className="flex flex-col gap-3 rounded bg-paper p-5 shadow-[0_20px_40px_-20px_rgba(42,31,26,0.2)]">
                       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
@@ -168,7 +215,7 @@ export default function CartPage() {
 
                         <div className="flex items-center justify-between gap-4 sm:flex-col sm:items-end sm:justify-center sm:gap-1.5">
                           <span className="font-heading text-sm font-bold text-ink">
-                            {formatVND(giaThueNgayDau(product.giaNiemYet) * soNgay(line.startDate, line.endDate))}
+                            {formatVND(tienThue)}
                           </span>
                           <div className="flex items-center gap-4">
                             <button
@@ -253,10 +300,10 @@ export default function CartPage() {
 
                 <div className="flex items-center justify-between border-t border-ink/8 pt-4">
                   <span className="text-sm font-semibold uppercase tracking-wider text-ink-soft">
-                    Tạm tính tiền thuê
+                    Tổng tiền thuê (BRU-02)
                   </span>
                   <span className="font-heading text-lg font-semibold text-ink">
-                    {formatVND(tongTienThue)}
+                    {formatVND(coc.tongTienThue)}
                   </span>
                 </div>
                 <div className="mt-2 flex items-center justify-between">
@@ -267,11 +314,31 @@ export default function CartPage() {
                     {formatVND(coc.tongTienCoc)}
                   </span>
                 </div>
+
+                <button
+                  type="button"
+                  onClick={handleCheckout}
+                  disabled={checkingOut || !coc.diaChiNhan}
+                  className="mt-5 w-full bg-wine px-5 py-3 text-xs font-semibold uppercase tracking-wider text-paper transition-colors hover:bg-wine-deep disabled:opacity-60"
+                >
+                  {checkingOut ? "Đang xử lý..." : "Xác nhận đặt thuê"}
+                </button>
+                {!coc.diaChiNhan && (
+                  <p className="mt-2 text-center text-xs text-destructive">
+                    Cần có địa chỉ nhận hàng (hồ sơ cá nhân) trước khi đặt thuê.
+                  </p>
+                )}
+                {checkoutError && (
+                  <p className="mt-2 text-center text-xs font-medium text-destructive">{checkoutError}</p>
+                )}
               </Reveal>
 
               <p className="mt-3 text-center text-xs text-ink-soft">
-                Tiền cọc = giá niêm yết mỗi sản phẩm + phí ship ước tính chiều giao (do {TEN_DOI_TAC[coc.doiTac]} báo
-                giá theo khoảng cách, BRU-05) × 2, dự trù cho cả hai chiều giao vận bắt buộc (FR-CT-03).
+                Tiền thuê tính theo biểu giá lũy tiến giảm dần của BRU-02 (ngày 1 = 10% giá niêm yết, ngày 2-10 =
+                7%/ngày, ngày 11+ = 5%/ngày, FR-CT-04). Tiền cọc = giá niêm yết mỗi sản phẩm + phí ship ước tính chiều
+                giao (do {TEN_DOI_TAC[coc.doiTac]} báo giá theo khoảng cách, BRU-05) × 2, dự trù cho cả hai chiều giao
+                vận bắt buộc (FR-CT-03). Bấm &quot;Xác nhận đặt thuê&quot; sẽ tạo đơn ở trạng thái chờ nhân viên xác
+                nhận (FR-CT-05) — luồng thanh toán QR thật (UC-10) chưa được mô phỏng ở bước này.
               </p>
             </>
           )}

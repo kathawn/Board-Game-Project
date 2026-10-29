@@ -3,7 +3,11 @@
  * FR-CT-01 yêu cầu mỗi dòng chỉ hợp lệ khi ngày kết thúc sau ngày bắt đầu
  * và sản phẩm còn trống trong khoảng đó — phần "còn trống" dùng đúng quy
  * tắc trùng lịch của FR-CT-02/BR-05 (trùng ít nhất 1 ngày với đơn thuê khác
- * còn hiệu lực, hoặc với dòng khác cùng sản phẩm đã có trong giỏ). */
+ * còn hiệu lực, hoặc với dòng khác cùng sản phẩm đã có trong giỏ). "Đơn
+ * thuê khác còn hiệu lực" tra từ rentalOrderStore thật (tiêm vào qua
+ * getActiveReservations, xem lib/rentals/server.ts) — KHÔNG chỉ dựa vào
+ * ACTIVE_RESERVATIONS demo bên dưới, nếu không mọi sản phẩm trừ Catan sẽ
+ * không được chặn trùng lịch với đơn thật tạo qua checkout (FR-CT-05). */
 
 export interface RentalCartLine {
   id: string;
@@ -12,7 +16,7 @@ export interface RentalCartLine {
   endDate: string;
 }
 
-interface ActiveReservation {
+export interface ActiveReservation {
   startDate: string;
   endDate: string;
 }
@@ -37,11 +41,16 @@ export interface RentalCartStore {
     input: { productName: string; startDate: string; endDate: string },
   ): AddLineResult;
   removeLine(email: string, lineId: string): void;
+  /** FR-CT-05: xoá toàn bộ giỏ thuê sau khi đã chuyển thành đơn thuê (checkout). */
+  clear(email: string): void;
 }
 
-/** Đơn thuê còn hiệu lực đã tồn tại trong hệ thống (giả định, seed để demo
- * BR-05) — khớp đơn DH-00245 (Active, 20/10→23/10/2026, Catan) đã seed ở
- * lib/orders/store.ts, dùng để minh hoạ việc chặn trùng lịch. */
+/** Đơn thuê còn hiệu lực đã tồn tại trong hệ thống TRƯỚC khi có luồng
+ * checkout thật (giả định, seed để demo BR-05) — khớp đơn DH-00245 (Active,
+ * 20/10→23/10/2026, Catan) đã seed ở lib/orders/store.ts. Giữ lại song song
+ * với getActiveReservations (đơn thật từ rentalOrderStore) vì đơn demo này
+ * không nằm trong rentalOrderStore — nó minh hoạ việc chặn trùng với dữ
+ * liệu lịch sử có sẵn, không phải đơn tạo qua checkout của feature này. */
 const ACTIVE_RESERVATIONS: Record<string, ActiveReservation[]> = {
   catan: [{ startDate: "2026-10-20", endDate: "2026-10-23" }],
 };
@@ -54,7 +63,17 @@ function rangesOverlap(aStart: string, aEnd: string, bStart: string, bEnd: strin
   return aStart <= bEnd && bStart <= aEnd;
 }
 
-export function createInMemoryRentalCartStore(): RentalCartStore {
+/** FR-CT-02/BR-05: tra cứu đơn thuê thật (Pending/Confirmed — cả hai đều
+ * "còn hiệu lực", chỉ đơn đã Confirmed mới chắc chắn đã giữ chỗ, nhưng
+ * Pending cũng phải chặn vì BRU-07 ưu tiên theo thời điểm xử lý, không
+ * phải theo trạng thái) có trùng khoảng ngày cho một sản phẩm — tiêm từ
+ * ngoài vào (lib/rentals/server.ts) để tránh phụ thuộc vòng tròn giữa
+ * store.ts và order-store.ts. */
+export type GetActiveReservations = (productSlug: string) => ActiveReservation[];
+
+export function createInMemoryRentalCartStore(
+  getActiveReservations: GetActiveReservations = () => [],
+): RentalCartStore {
   const cartsByEmail = new Map<string, RentalCartLine[]>();
   let nextId = 1;
 
@@ -74,8 +93,9 @@ export function createInMemoryRentalCartStore(): RentalCartStore {
       const existingLines = cartsByEmail.get(email) ?? [];
       const linesForSameProduct = existingLines.filter((l) => l.productSlug === productSlug);
       const reservations = ACTIVE_RESERVATIONS[productSlug] ?? [];
+      const realOrders = getActiveReservations(productSlug);
 
-      const conflict = [...reservations, ...linesForSameProduct].some((r) =>
+      const conflict = [...reservations, ...realOrders, ...linesForSameProduct].some((r) =>
         rangesOverlap(startDate, endDate, r.startDate, r.endDate),
       );
       if (conflict) {
@@ -108,8 +128,9 @@ export function createInMemoryRentalCartStore(): RentalCartStore {
         (l) => l.productSlug === target.productSlug && l.id !== lineId,
       );
       const reservations = ACTIVE_RESERVATIONS[target.productSlug] ?? [];
+      const realOrders = getActiveReservations(target.productSlug);
 
-      const conflict = [...reservations, ...linesForSameProduct].some((r) =>
+      const conflict = [...reservations, ...realOrders, ...linesForSameProduct].some((r) =>
         rangesOverlap(startDate, endDate, r.startDate, r.endDate),
       );
       if (conflict) {
@@ -130,6 +151,10 @@ export function createInMemoryRentalCartStore(): RentalCartStore {
     removeLine(email, lineId) {
       const existingLines = cartsByEmail.get(email) ?? [];
       cartsByEmail.set(email, existingLines.filter((l) => l.id !== lineId));
+    },
+
+    clear(email) {
+      cartsByEmail.set(email, []);
     },
   };
 }
