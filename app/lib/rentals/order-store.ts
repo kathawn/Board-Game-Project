@@ -1,13 +1,15 @@
 import type { PrismaClient, Prisma } from "../generated/prisma/client";
 import { toIso, TRANG_THAI_DANG_GIU } from "../db/tx";
 import { tinhPhiShip, uocTinhKhoangCachKm } from "./deposit";
+import { toShipment } from "../shipping/service";
+import type { Shipment } from "../shipping/types";
 
 /** FR-CT-05 (BR-01, UC-05/UC-06): đơn thuê. Đơn chỉ được TẠO bởi webhook thanh toán cọc thành công
  * (lib/payments/service.ts, UC-10); store này chỉ đọc và xác nhận. Mỗi dòng giữ lại tiền thuê
  * (FR-CT-04/BRU-02) và tiền cọc (FR-CT-03/BRU-01) đã tính lúc tạo đơn, để Staff xác nhận (UC-05)
  * không cần tính lại và không bị ảnh hưởng nếu giá niêm yết đổi sau đó. */
 
-export type TrangThaiDonThue = "Pending" | "Confirmed";
+export type TrangThaiDonThue = "Pending" | "Confirmed" | "Active" | "Overdue";
 
 export interface RentalOrderLine {
   productSlug: string;
@@ -31,6 +33,8 @@ export interface RentalOrder {
   tongTienCoc: number;
   /** UC-10: khoản thanh toán cọc đã tạo ra đơn này. */
   paymentId?: string;
+  /** FR-TTGV-03/04/05: vận đơn hai chiều đã tạo (gộp mọi dòng đơn; trống cho tới khi bàn giao). */
+  shipments: Shipment[];
 }
 
 export interface RentalOrderStore {
@@ -44,7 +48,7 @@ export interface RentalOrderStore {
 
 const includeOrder = {
   khachHang: { select: { email: true } },
-  chiTiet: { include: { sanPham: { select: { slug: true, ten: true } } } },
+  chiTiet: { include: { sanPham: { select: { slug: true, ten: true } }, giaoVan: true } },
   datCoc: true,
   thanhToan: { select: { maThanhToan: true }, take: 1 },
 } satisfies Prisma.DonHangInclude;
@@ -64,16 +68,17 @@ function toRentalOrder(row: OrderRow): RentalOrder {
   return {
     id: row.maDon,
     email: row.khachHang.email,
-    trangThai: row.trangThai === "Confirmed" ? "Confirmed" : "Pending",
+    trangThai: (["Confirmed", "Active", "Overdue"].includes(row.trangThai) ? row.trangThai : "Pending") as TrangThaiDonThue,
     ngayTao: toIso(row.ngayTao),
     diaChiNhan,
-    // Đối tác giao vận chọn theo khoảng cách (BRU-05) — suy ra từ địa chỉ nhận, chưa lưu GiaoVan
-    // cho tới khi Staff bàn giao (UC-06).
+    // Đối tác giao vận dự kiến chọn theo khoảng cách (BRU-05) — suy ra từ địa chỉ nhận; vận đơn thật nằm
+    // ở `shipments` sau khi Staff bàn giao (UC-06).
     doiTac: tinhPhiShip(uocTinhKhoangCachKm(diaChiNhan)).doiTac,
     lines,
     tongTienThue: lines.reduce((sum, l) => sum + l.tienThue, 0),
     tongTienCoc: row.datCoc ? Number(row.datCoc.soTien) : lines.reduce((sum, l) => sum + l.tienCoc, 0),
     paymentId: row.thanhToan[0]?.maThanhToan,
+    shipments: row.chiTiet.flatMap((c) => c.giaoVan.filter((g) => g.maVanDon).map(toShipment)),
   };
 }
 
@@ -81,8 +86,9 @@ export function createPrismaRentalOrderStore(getDb: () => PrismaClient): RentalO
   return {
     async list() {
       const rows = await getDb().donHang.findMany({
-        // Staff chỉ xử lý đơn đang chờ xác nhận hoặc vừa xác nhận (UC-05); Active/Completed... thuộc UC-06/07.
-        where: { loai: "Thue", trangThai: { in: ["Pending", "Confirmed"] } },
+        // Staff xử lý đơn chờ xác nhận (UC-05), đã xác nhận chờ bàn giao (UC-06) và đang thuê/quá hạn để theo
+        // dõi vận chuyển (UC-12); Completed/Closed thuộc UC-07.
+        where: { loai: "Thue", trangThai: { in: ["Pending", "Confirmed", "Active", "Overdue"] } },
         include: includeOrder,
         orderBy: { ngayTao: "desc" },
       });

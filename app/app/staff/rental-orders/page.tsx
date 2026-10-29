@@ -1,16 +1,24 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CalendarDays, PackageCheck } from "lucide-react";
+import { CalendarDays, PackageCheck, Truck } from "lucide-react";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { Reveal } from "@/components/Reveal";
 import { formatVND } from "@/lib/products";
 import type { RentalOrder } from "@/lib/rentals/order-store";
+import { TEN_DOI_TAC as TEN_DOI_TAC_VC, type TrangThaiVanChuyen } from "@/lib/shipping/types";
 
 const TEN_DOI_TAC: Record<RentalOrder["doiTac"], string> = {
   GreenSM: "Green SM",
   ShopeeExpress: "Shopee Express",
+};
+
+const TRANG_THAI_VC: Record<TrangThaiVanChuyen, { label: string; className: string }> = {
+  DangGiao: { label: "Đang giao", className: "bg-gold/15 text-gold" },
+  DaGiao: { label: "Đã giao", className: "bg-forest/15 text-forest" },
+  DangLay: { label: "Đang lấy", className: "bg-gold/15 text-gold" },
+  DaLay: { label: "Đã lấy", className: "bg-forest/15 text-forest" },
 };
 
 /** FR-CT-05 (UC-05): màn hình nội bộ cho nhân viên xem đơn thuê mới và xác
@@ -21,6 +29,7 @@ export default function StaffRentalOrdersPage() {
   const [loading, setLoading] = useState(true);
   const [orders, setOrders] = useState<RentalOrder[]>([]);
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
+  const [handingOverId, setHandingOverId] = useState<string | null>(null);
   const [errorByOrder, setErrorByOrder] = useState<Record<string, string>>({});
 
   const reload = async () => {
@@ -54,6 +63,23 @@ export default function StaffRentalOrdersPage() {
     }
   };
 
+  /** UC-06: bàn giao cho giao vận (gọi đối tác tạo yêu cầu giao hàng, hộp game → Rented, đơn → Active). */
+  const handleHandover = async (id: string) => {
+    setErrorByOrder((prev) => ({ ...prev, [id]: "" }));
+    setHandingOverId(id);
+    try {
+      const response = await fetch(`/api/staff/rental-orders/${id}/handover`, { method: "POST" });
+      const data = await response.json();
+      if (!response.ok) {
+        setErrorByOrder((prev) => ({ ...prev, [id]: data.error ?? "Đã có lỗi xảy ra." }));
+        return;
+      }
+      await reload();
+    } finally {
+      setHandingOverId(null);
+    }
+  };
+
   if (loading) {
     return (
       <>
@@ -68,6 +94,7 @@ export default function StaffRentalOrdersPage() {
 
   const pending = orders.filter((o) => o.trangThai === "Pending");
   const confirmed = orders.filter((o) => o.trangThai === "Confirmed");
+  const dangThue = orders.filter((o) => o.trangThai === "Active" || o.trangThai === "Overdue");
 
   return (
     <>
@@ -169,13 +196,78 @@ export default function StaffRentalOrdersPage() {
               <div className="flex flex-col gap-3">
                 {confirmed.map((order, i) => (
                   <Reveal key={order.id} delay={i * 60}>
-                    <article className="flex items-center justify-between rounded bg-paper p-4 shadow-[0_20px_40px_-20px_rgba(42,31,26,0.2)]">
+                    <article className="rounded bg-paper p-4 shadow-[0_20px_40px_-20px_rgba(42,31,26,0.2)]">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                          <span className="text-sm font-semibold text-ink">
+                            {order.id} <span className="text-ink-soft">· {order.email}</span>
+                          </span>
+                          <p className="mt-1 text-xs text-ink-soft">
+                            {order.lines.map((l) => l.productName).join(", ")} · giao tới {order.diaChiNhan} — đối tác{" "}
+                            <span className="font-semibold text-ink">{TEN_DOI_TAC[order.doiTac]}</span>
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <span className="rounded-full bg-sky/15 px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-sky">
+                            Đã xác nhận
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleHandover(order.id)}
+                            disabled={handingOverId === order.id}
+                            className="flex items-center gap-2 whitespace-nowrap bg-wine px-5 py-2.5 text-xs font-semibold uppercase tracking-wider text-paper transition-colors hover:bg-wine-deep disabled:opacity-60"
+                          >
+                            <Truck className="h-3.5 w-3.5" />
+                            {handingOverId === order.id ? "Đang bàn giao..." : "Bàn giao cho giao vận"}
+                          </button>
+                        </div>
+                      </div>
+                      {errorByOrder[order.id] && (
+                        <p className="mt-3 text-xs font-medium text-destructive">{errorByOrder[order.id]}</p>
+                      )}
+                    </article>
+                  </Reveal>
+                ))}
+              </div>
+            )}
+          </section>
+
+          <section className="mt-12">
+            <h2 className="mb-4 text-xs font-semibold uppercase tracking-wider text-ink-soft">
+              Đang thuê / quá hạn — theo dõi vận chuyển ({dangThue.length})
+            </h2>
+
+            {dangThue.length === 0 ? (
+              <Reveal className="rounded bg-paper p-8 text-center text-sm text-ink-soft">
+                Chưa có đơn nào đã bàn giao.
+              </Reveal>
+            ) : (
+              <div className="flex flex-col gap-3">
+                {dangThue.map((order, i) => (
+                  <Reveal key={order.id} delay={i * 60}>
+                    <article className="rounded bg-paper p-4 shadow-[0_20px_40px_-20px_rgba(42,31,26,0.2)]">
                       <span className="text-sm font-semibold text-ink">
                         {order.id} <span className="text-ink-soft">· {order.email}</span>
                       </span>
-                      <span className="rounded-full bg-sky/15 px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-sky">
-                        Đã xác nhận
-                      </span>
+                      {order.shipments.length === 0 ? (
+                        <p className="mt-2 text-xs text-ink-soft">Chưa có vận đơn.</p>
+                      ) : (
+                        <ul className="mt-2 flex flex-col gap-1.5">
+                          {order.shipments.map((sh) => (
+                            <li key={sh.maVanDon} className="flex items-center justify-between text-xs text-ink-soft">
+                              <span>
+                                {sh.chieu === "Nhan" ? "Chiều giao" : "Chiều lấy trả"} · {TEN_DOI_TAC_VC[sh.doiTac]} · {sh.maVanDon} ·{" "}
+                                {formatVND(sh.phiShip)}
+                              </span>
+                              <span
+                                className={`rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-wider ${TRANG_THAI_VC[sh.trangThai].className}`}
+                              >
+                                {TRANG_THAI_VC[sh.trangThai].label}
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
                     </article>
                   </Reveal>
                 ))}

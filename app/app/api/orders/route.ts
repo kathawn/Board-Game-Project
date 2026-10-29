@@ -3,6 +3,7 @@ import { getSessionEmail } from "@/lib/auth/request";
 import { getPrisma } from "@/lib/db/client";
 import { toIso } from "@/lib/db/tx";
 import type { DonHang, LoaiDon, TrangThaiDon } from "@/lib/orders/store";
+import { toShipment } from "@/lib/shipping/service";
 
 /** FR-BH-05 (BR-08): lịch sử đơn mua/thuê của chính khách — đọc thẳng từ bảng DonHang trong SQL Server
  * (gồm cả đơn thuê vừa tạo qua thanh toán QR, UC-10, và đơn mẫu từ seed). */
@@ -18,7 +19,7 @@ export async function GET(request: Request) {
 
   const rows = await getPrisma().donHang.findMany({
     where: { khachHang: { email }, ...(loai ? { loai } : {}) },
-    include: { chiTiet: { include: { sanPham: { select: { ten: true } } } }, datCoc: true },
+    include: { chiTiet: { include: { sanPham: { select: { ten: true } }, giaoVan: true } }, datCoc: true },
     orderBy: { ngayTao: "desc" },
   });
 
@@ -37,6 +38,12 @@ export async function GET(request: Request) {
       tongTien: thue
         ? Number(row.datCoc?.soTien ?? 0)
         : row.chiTiet.reduce((sum, c) => sum + Number(c.donGia), 0),
+      ...(thue
+        ? {
+            diaChiNhan: row.chiTiet[0]?.diaChiNhan,
+            shipments: row.chiTiet.flatMap((c) => c.giaoVan.filter((g) => g.maVanDon).map(toShipment)),
+          }
+        : {}),
     };
   });
 
