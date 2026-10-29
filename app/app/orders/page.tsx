@@ -18,11 +18,11 @@ const TRANG_THAI_LABEL: Record<TrangThaiDon, { label: string; className: string 
   Closed: { label: "Đã đóng", className: "bg-forest/15 text-forest" },
 };
 
-/** FR-CT-05: đơn thuê Pending ở luồng này đã bỏ qua bước thanh toán QR thật
- * (UC-10/FR-TTGV-06/07 ngoài phạm vi) — Pending ở đây nghĩa là "đã tạo đơn,
- * đang chờ Staff xác nhận" (khớp đúng chữ dùng ở /cart và
- * /staff/rental-orders), không phải "chờ thanh toán" như đơn mua demo cũ
- * (ví dụ DH-00302) — nên nhãn Pending phải khác nhau theo loại đơn. */
+/** FR-CT-05: đơn thuê chỉ được tạo sau khi webhook thanh toán cọc thành công
+ * (UC-10/FR-TTGV-07) — nên Pending ở đây nghĩa là "đã thanh toán, đang chờ
+ * Staff xác nhận" (khớp đúng chữ dùng ở /staff/rental-orders), không phải
+ * "chờ thanh toán" như đơn mua demo cũ (ví dụ DH-00302) — nên nhãn Pending
+ * phải khác nhau theo loại đơn. */
 function trangThaiLabel(order: DonHang): { label: string; className: string } {
   if (order.trangThai === "Pending" && order.loai === "Thue") {
     return { label: "Chờ xác nhận", className: "bg-ink/10 text-ink-soft" };

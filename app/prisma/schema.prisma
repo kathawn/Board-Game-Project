@@ -1,0 +1,234 @@
+// Schema chuyển từ SDD_BoardVerse_v1.0 mục 3 (13 model, khớp ERD SRS 3.5).
+//
+// SQL Server không hỗ trợ enum native của Prisma -> các cột "enum" của SDD mục 4 được lưu dạng
+// String (giá trị y hệt SDD) và ràng buộc bằng CHECK ở migration SQL; kiểu TypeScript tương ứng
+// nằm ở lib/db/enums.ts. UUID sinh phía ứng dụng (@default(uuid())). Tiền dùng Decimal(12,0)
+// theo ERD (NUMERIC(12,0)).
+
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlserver"
+}
+
+model KhachHang {
+  id          String    @id @default(uuid()) @db.UniqueIdentifier
+  hoTen       String
+  email       String    @unique
+  sdt         String    @default("")
+  diaChi      String    @default("")
+  matKhauHash String
+  // UC-01 / FR-BH-01: khoá tài khoản sau nhiều lần đăng nhập sai (lib/auth/auth.ts).
+  soLanSai    Int       @default(0)
+  khoaDen     DateTime?
+  donHang     DonHang[]
+  danhGia     DanhGia[]
+  viDienTu    ViDienTu?
+  thanhToan   ThanhToan[]
+}
+
+model ViDienTu {
+  id          String    @id @default(uuid()) @db.UniqueIdentifier
+  khachHangId String    @unique @db.UniqueIdentifier
+  khachHang   KhachHang @relation(fields: [khachHangId], references: [id])
+  soDu        Decimal   @default(0) @db.Decimal(12, 0) // ERD: >= 0 (CHECK ck_vidientu_sodu)
+  butToan     ButToanVi[]
+}
+
+/// Sổ cái ví (BRU-06): mỗi lần cộng/trừ ví ghi một dòng, để truy vết hoàn tiền.
+model ButToanVi {
+  id        String   @id @default(uuid()) @db.UniqueIdentifier
+  viId      String   @db.UniqueIdentifier
+  vi        ViDienTu @relation(fields: [viId], references: [id])
+  soTien    Decimal  @db.Decimal(12, 0)
+  lyDo      String
+  // Idempotency: một khoản thanh toán + một transactionId chỉ được hoàn một lần.
+  thanhToanId String? @db.UniqueIdentifier
+  maGiaoDich  String?
+  ngayTao   DateTime @default(now())
+
+  @@unique([thanhToanId, maGiaoDich])
+}
+
+model SanPham {
+  id         String           @id @default(uuid()) @db.UniqueIdentifier
+  slug       String           @unique
+  ten        String
+  moTa       String           @default("")
+  giaNiemYet Decimal          @db.Decimal(12, 0)
+  danhMuc    String
+  anhUrl     String?
+  hopGame    HopGame[]
+  linhKien   LinhKien[]
+  chiTietDon ChiTietDonHang[]
+  danhGia    DanhGia[]
+}
+
+model HopGame {
+  id        String  @id @default(uuid()) @db.UniqueIdentifier
+  sanPhamId String  @db.UniqueIdentifier
+  sanPham   SanPham @relation(fields: [sanPhamId], references: [id])
+  maHop     String  @unique
+  // TrangThaiHopGame: Available | Reserved | Rented | Checking | Damaged | Sold
+  trangThai String  @default("Available")
+
+  @@index([trangThai])
+}
+
+model LinhKien {
+  id          String  @id @default(uuid()) @db.UniqueIdentifier
+  sanPhamId   String  @db.UniqueIdentifier
+  sanPham     SanPham @relation(fields: [sanPhamId], references: [id])
+  tenLinhKien String
+  laDocBan    Boolean @default(false)
+
+  @@index([sanPhamId])
+}
+
+model DanhGia {
+  id          String    @id @default(uuid()) @db.UniqueIdentifier
+  sanPhamId   String    @db.UniqueIdentifier
+  sanPham     SanPham   @relation(fields: [sanPhamId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  khachHangId String    @db.UniqueIdentifier
+  khachHang   KhachHang @relation(fields: [khachHangId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  donHangId   String    @db.UniqueIdentifier
+  donHang     DonHang   @relation(fields: [donHangId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  soSao       Int // CHECK 1..5
+  nhanXet     String?
+  ngayDanhGia DateTime  @default(now())
+
+  @@index([sanPhamId])
+}
+
+model NhanVien {
+  id             String           @id @default(uuid()) @db.UniqueIdentifier
+  hoTen          String
+  email          String           @unique
+  matKhauHash    String
+  // VaiTroNhanVien: Staff | Admin
+  vaiTro         String
+  dangHoatDong   Boolean          @default(true)
+  bienBanKiemDem BienBanKiemDem[]
+}
+
+model DonHang {
+  id          String           @id @default(uuid()) @db.UniqueIdentifier
+  // Mã hiển thị cho người dùng (DT-00001 / DH-00231), tách khỏi khoá chính UUID.
+  maDon       String           @unique
+  khachHangId String           @db.UniqueIdentifier
+  khachHang   KhachHang        @relation(fields: [khachHangId], references: [id])
+  // LoaiDonHang: Ban | Thue
+  loai        String
+  // TrangThaiDon: Pending | Confirmed | Active | Overdue | Completed | Closed
+  trangThai   String           @default("Pending")
+  ngayTao     DateTime         @default(now())
+  chiTiet     ChiTietDonHang[]
+  datCoc      DatCoc?
+  thanhToan   ThanhToan[]
+  danhGia     DanhGia[]
+
+  @@index([khachHangId])
+  @@index([trangThai])
+}
+
+model ChiTietDonHang {
+  id          String            @id @default(uuid()) @db.UniqueIdentifier
+  donHangId   String            @db.UniqueIdentifier
+  donHang     DonHang           @relation(fields: [donHangId], references: [id])
+  sanPhamId   String            @db.UniqueIdentifier
+  sanPham     SanPham           @relation(fields: [sanPhamId], references: [id])
+  soLuong     Int               @default(1)
+  ngayBatDau  DateTime?         @db.Date
+  ngayKetThuc DateTime?         @db.Date
+  tienThue    Decimal?          @db.Decimal(12, 0) // snapshot BRU-02 (đơn thuê)
+  tienCoc     Decimal?          @db.Decimal(12, 0) // snapshot BRU-01 (đơn thuê)
+  donGia      Decimal           @db.Decimal(12, 0)
+  diaChiNhan  String
+  diaChiTra   String?
+  giaoVan     GiaoVan[]
+  bienBan     BienBanKiemDem[]
+
+  // FR-CT-02: index phục vụ kiểm tra tồn kho theo khoảng ngày (SDD mục 5).
+  @@index([sanPhamId, ngayBatDau, ngayKetThuc])
+}
+
+model DatCoc {
+  id         String    @id @default(uuid()) @db.UniqueIdentifier
+  donHangId  String    @unique @db.UniqueIdentifier
+  donHang    DonHang   @relation(fields: [donHangId], references: [id])
+  soTien     Decimal   @db.Decimal(12, 0)
+  phiShipGiu Decimal   @default(0) @db.Decimal(12, 0)
+  // TrangThaiCoc: Held | Refunded | Partially_Refunded
+  trangThai  String    @default("Held")
+  ngayHoan   DateTime? @db.Date
+}
+
+model GiaoVan {
+  id                 String         @id @default(uuid()) @db.UniqueIdentifier
+  chiTietDonId       String         @db.UniqueIdentifier
+  chiTietDon         ChiTietDonHang @relation(fields: [chiTietDonId], references: [id])
+  // ChieuGiaoVan: Nhan | Tra
+  chieu              String
+  // DoiTacGiaoVan: GreenSM | ShopeeExpress
+  doiTac             String
+  khoangCachKm       Decimal        @db.Decimal(6, 2)
+  phiShip            Decimal        @db.Decimal(12, 0)
+  maVanDon           String?        @unique(map: "uq_giaovan_mavandon")
+  // TrangThaiVanChuyen: DangGiao | DaGiao | DangLay | DaLay
+  trangThaiVanChuyen String
+}
+
+model ThanhToan {
+  id         String   @id @default(uuid()) @db.UniqueIdentifier
+  // Mã hiển thị / mã đơn gắn vào QR (PAY-00001).
+  maThanhToan String  @unique
+  donHangId  String?  @db.UniqueIdentifier
+  donHang    DonHang? @relation(fields: [donHangId], references: [id])
+  khachHangId String  @db.UniqueIdentifier
+  khachHang  KhachHang @relation(fields: [khachHangId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  soTien     Decimal  @db.Decimal(12, 0)
+  // MucDichThanhToan: TienHang | TienCoc | ThuThem
+  mucDich    String
+  // TrangThaiThanhToan: ChoThanhToan | DaThanhToan | HetHieuLuc
+  trangThai  String   @default("ChoThanhToan")
+  // Kết quả nghiệp vụ gắn thêm cho giao diện (ThanhCong | MotPhanHetHang | HetHang | ThatBai | HoanQuaHan | SaiSoTien).
+  ketQua     String?
+  maQR       String?  @unique(map: "uq_thanhtoan_maqr")
+  taoLuc     DateTime @default(now())
+  hetHanLuc  DateTime
+  // Snapshot giỏ thuê lúc sinh QR (JSON) — webhook không tính lại giá.
+  snapshot   String   @db.NVarChar(Max)
+  soTienHoan Decimal  @default(0) @db.Decimal(12, 0)
+  giaoDich   GiaoDichThanhToan[]
+
+  @@index([donHangId, trangThai])
+  @@index([khachHangId])
+}
+
+/// Idempotency của webhook MoMo: mỗi transactionId chỉ được xử lý đúng một lần.
+model GiaoDichThanhToan {
+  id          String    @id @default(uuid()) @db.UniqueIdentifier
+  thanhToanId String    @db.UniqueIdentifier
+  thanhToan   ThanhToan @relation(fields: [thanhToanId], references: [id])
+  maGiaoDich  String
+  soTien      Decimal   @db.Decimal(12, 0)
+  ketQuaMa    Int
+  ngayTao     DateTime  @default(now())
+
+  @@unique([thanhToanId, maGiaoDich])
+}
+
+model BienBanKiemDem {
+  id           String         @id @default(uuid()) @db.UniqueIdentifier
+  chiTietDonId String         @db.UniqueIdentifier
+  chiTietDon   ChiTietDonHang @relation(fields: [chiTietDonId], references: [id])
+  nhanVienId   String         @db.UniqueIdentifier
+  nhanVien     NhanVien       @relation(fields: [nhanVienId], references: [id])
+  ketQua       String
+  ngayLap      DateTime       @default(now())
+
+  @@index([chiTietDonId])
+}

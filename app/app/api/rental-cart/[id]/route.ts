@@ -13,13 +13,13 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   const { id } = await params;
   const { startDate, endDate } = await request.json();
 
-  const existingLine = rentalCartStore.list(email).find((l) => l.id === id);
+  const existingLine = (await rentalCartStore.list(email)).find((l) => l.id === id);
   if (!existingLine) {
     return Response.json({ error: "Không tìm thấy dòng trong giỏ thuê." }, { status: 404 });
   }
 
   const product = getProductBySlug(existingLine.productSlug);
-  const result = rentalCartStore.updateLine(email, id, {
+  const result = await rentalCartStore.updateLine(email, id, {
     productName: product?.ten ?? existingLine.productSlug,
     startDate,
     endDate,
@@ -39,7 +39,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
   }
 
   const { id } = await params;
-  rentalCartStore.removeLine(email, id);
+  await rentalCartStore.removeLine(email, id);
 
   return Response.json({ ok: true });
 }

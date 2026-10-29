@@ -38,7 +38,6 @@ export default function CartPage() {
   const [savingEdit, setSavingEdit] = useState(false);
   const [checkingOut, setCheckingOut] = useState(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
-  const [checkoutOrderId, setCheckoutOrderId] = useState<string | null>(null);
   const [dongGia, setDongGia] = useState<{ lineId: string; tienThue: number; tienCoc: number }[]>([]);
   const [coc, setCoc] = useState<TienCocInfo>({
     diaChiNhan: "",
@@ -136,8 +135,8 @@ export default function CartPage() {
         return;
       }
 
-      setCheckoutOrderId(data.order.id);
-      await reloadCart();
+      // UC-10: sang trang thanh toán QR; đơn thuê chỉ được tạo khi webhook thành công về.
+      router.push(`/pay/${data.paymentId}`);
     } finally {
       setCheckingOut(false);
     }
@@ -175,22 +174,10 @@ export default function CartPage() {
 
           {rows.length === 0 ? (
             <Reveal className="rounded bg-paper p-12 text-center text-sm text-ink-soft">
-              {checkoutOrderId ? (
-                <>
-                  Đã tạo đơn thuê <span className="font-semibold text-ink">{checkoutOrderId}</span> ở
-                  trạng thái &quot;Chờ xác nhận&quot; (Pending) — chờ nhân viên xác nhận đã thu cọc (FR-CT-05).{" "}
-                  <Link href="/orders" className="font-semibold text-wine hover:underline">
-                    Xem lịch sử đơn
-                  </Link>
-                </>
-              ) : (
-                <>
-                  Giỏ thuê đang trống.{" "}
-                  <Link href="/products" className="font-semibold text-wine hover:underline">
-                    Xem sản phẩm cho thuê
-                  </Link>
-                </>
-              )}
+              Giỏ thuê đang trống.{" "}
+              <Link href="/products" className="font-semibold text-wine hover:underline">
+                Xem sản phẩm cho thuê
+              </Link>
             </Reveal>
           ) : (
             <>
@@ -321,7 +308,7 @@ export default function CartPage() {
                   disabled={checkingOut || !coc.diaChiNhan}
                   className="mt-5 w-full bg-wine px-5 py-3 text-xs font-semibold uppercase tracking-wider text-paper transition-colors hover:bg-wine-deep disabled:opacity-60"
                 >
-                  {checkingOut ? "Đang xử lý..." : "Xác nhận đặt thuê"}
+                  {checkingOut ? "Đang xử lý..." : "Thanh toán cọc qua mã QR"}
                 </button>
                 {!coc.diaChiNhan && (
                   <p className="mt-2 text-center text-xs text-destructive">
@@ -337,8 +324,9 @@ export default function CartPage() {
                 Tiền thuê tính theo biểu giá lũy tiến giảm dần của BRU-02 (ngày 1 = 10% giá niêm yết, ngày 2-10 =
                 7%/ngày, ngày 11+ = 5%/ngày, FR-CT-04). Tiền cọc = giá niêm yết mỗi sản phẩm + phí ship ước tính chiều
                 giao (do {TEN_DOI_TAC[coc.doiTac]} báo giá theo khoảng cách, BRU-05) × 2, dự trù cho cả hai chiều giao
-                vận bắt buộc (FR-CT-03). Bấm &quot;Xác nhận đặt thuê&quot; sẽ tạo đơn ở trạng thái chờ nhân viên xác
-                nhận (FR-CT-05) — luồng thanh toán QR thật (UC-10) chưa được mô phỏng ở bước này.
+                vận bắt buộc (FR-CT-03). Bấm &quot;Thanh toán cọc qua mã QR&quot; sẽ sinh mã QR MoMo (giả lập,
+                FR-TTGV-06); đơn thuê chỉ được tạo ở trạng thái chờ nhân viên xác nhận (FR-CT-05) sau khi hệ thống nhận
+                webhook thanh toán thành công và sản phẩm/ngày vẫn còn khả dụng (FR-TTGV-07, BRU-07).
               </p>
             </>
           )}

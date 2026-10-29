@@ -1,27 +1,11 @@
-import { orderStore } from "@/lib/orders/server";
-import { rentalOrderStore } from "@/lib/rentals/server";
 import { sessionStore } from "@/lib/auth/server";
 import { getSessionEmail } from "@/lib/auth/request";
-import type { DonHang, LoaiDon } from "@/lib/orders/store";
-import type { RentalOrder } from "@/lib/rentals/order-store";
+import { getPrisma } from "@/lib/db/client";
+import { toIso } from "@/lib/db/tx";
+import type { DonHang, LoaiDon, TrangThaiDon } from "@/lib/orders/store";
 
-/** FR-CT-05 (UC-04/UC-05): đơn thuê tạo qua giỏ thuê (lib/rentals/order-store.ts)
- * nằm ở store riêng với lịch sử đơn mua/thuê demo của FR-BH-05
- * (lib/orders/store.ts) — khách phải thấy đơn thuê thật của mình ở đây
- * (FR-BH-05 "lịch sử đơn mua/thuê của chính khách"), nên gộp cả hai nguồn
- * khi trả về thay vì chỉ đọc orderStore cũ. */
-function rentalOrderToDonHang(order: RentalOrder): DonHang {
-  return {
-    id: order.id,
-    loai: "Thue",
-    trangThai: order.trangThai,
-    ngayTao: order.ngayTao,
-    sanPham: order.lines.map((l) => l.productName).join(", "),
-    chiTiet: order.lines.map((l) => `${l.productName} ${l.startDate} → ${l.endDate}`).join("; "),
-    tongTien: order.tongTienCoc,
-  };
-}
-
+/** FR-BH-05 (BR-08): lịch sử đơn mua/thuê của chính khách — đọc thẳng từ bảng DonHang trong SQL Server
+ * (gồm cả đơn thuê vừa tạo qua thanh toán QR, UC-10, và đơn mẫu từ seed). */
 export async function GET(request: Request) {
   const email = getSessionEmail(request, sessionStore);
   if (!email) {
@@ -32,18 +16,32 @@ export async function GET(request: Request) {
   const loai = url.searchParams.get("loai") as LoaiDon | null;
   const q = url.searchParams.get("q")?.trim().toLowerCase();
 
-  const rentalOrders = rentalOrderStore
-    .list()
-    .filter((order) => order.email === email)
-    .map(rentalOrderToDonHang);
-
-  const orders = [...rentalOrders, ...orderStore.listByEmail(email)].filter((order) => {
-    if (loai && order.loai !== loai) return false;
-    if (q && !order.sanPham.toLowerCase().includes(q) && !order.id.toLowerCase().includes(q)) {
-      return false;
-    }
-    return true;
+  const rows = await getPrisma().donHang.findMany({
+    where: { khachHang: { email }, ...(loai ? { loai } : {}) },
+    include: { chiTiet: { include: { sanPham: { select: { ten: true } } } }, datCoc: true },
+    orderBy: { ngayTao: "desc" },
   });
 
-  return Response.json({ ok: true, orders });
+  const orders: DonHang[] = rows.map((row) => {
+    const thue = row.loai === "Thue";
+    return {
+      id: row.maDon,
+      loai: row.loai as LoaiDon,
+      trangThai: row.trangThai as TrangThaiDon,
+      ngayTao: toIso(row.ngayTao),
+      sanPham: row.chiTiet.map((c) => c.sanPham.ten).join(", "),
+      chiTiet: thue
+        ? row.chiTiet.map((c) => `${c.sanPham.ten} ${c.ngayBatDau ? toIso(c.ngayBatDau) : ""} → ${c.ngayKetThuc ? toIso(c.ngayKetThuc) : ""}`).join("; ")
+        : row.chiTiet.map((c) => `${c.sanPham.ten} × ${c.soLuong}`).join("; "),
+      // Đơn thuê hiển thị tiền cọc đã thu; đơn mua hiển thị tổng tiền hàng.
+      tongTien: thue
+        ? Number(row.datCoc?.soTien ?? 0)
+        : row.chiTiet.reduce((sum, c) => sum + Number(c.donGia), 0),
+    };
+  });
+
+  const filtered = orders.filter(
+    (order) => !q || order.sanPham.toLowerCase().includes(q) || order.id.toLowerCase().includes(q),
+  );
+  return Response.json({ ok: true, orders: filtered });
 }
