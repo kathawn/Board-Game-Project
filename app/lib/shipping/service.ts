@@ -152,7 +152,7 @@ export function createShippingService(deps: { getDb: () => PrismaClient; carrier
             const hop = await tx.hopGame.findFirst({
               where: { sanPhamId: line.sanPhamId, trangThai: { in: ["Reserved", "Available"] } },
               orderBy: { trangThai: "desc" }, // "Reserved" > "Available"
-              select: { id: true },
+              select: { id: true, maHop: true },
             });
             const rented = hop
               ? await tx.hopGame.updateMany({
@@ -160,9 +160,11 @@ export function createShippingService(deps: { getDb: () => PrismaClient; carrier
                   data: { trangThai: "Rented" },
                 })
               : { count: 0 };
-            if (rented.count === 0) {
+            if (!hop || rented.count === 0) {
               throw new ShippingError(409, `Không còn hộp game "${line.sanPham.ten}" để xuất kho.`);
             }
+            // Ghi hộp nào đi theo dòng đơn này để lúc trả hàng (UC-08) biết chính xác hộp cần kiểm đếm.
+            await tx.chiTietDonHang.update({ where: { id: line.id }, data: { maHop: hop.maHop } });
           }
 
           // UC-06 bước 2 / FR-TTGV-03. Lỗi ở dòng sau sẽ huỷ vận đơn đã tạo ở dòng trước (withCompensation)
@@ -250,7 +252,8 @@ export function createShippingService(deps: { getDb: () => PrismaClient; carrier
         if (trangThai === cuoi) {
           const moved = await db.giaoVan.updateMany({
             where: { maVanDon, trangThaiVanChuyen: dau },
-            data: { trangThaiVanChuyen: cuoi },
+            // hoanTatLuc: với chiều trả (DaLay) là ngày hàng về kho -> số ngày trễ hạn (BRU-03, UC-07).
+            data: { trangThaiVanChuyen: cuoi, hoanTatLuc: new Date() },
           });
           duplicate = moved.count === 0;
         }
