@@ -1,8 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, ChevronLeft, ChevronRight, Info, LogOut, Plus, Search, Trash2 } from "lucide-react";
+import { AlertTriangle, ChevronLeft, ChevronRight, ImagePlus, Info, LogOut, Plus, Search, Trash2 } from "lucide-react";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { formatVND } from "@/lib/products";
@@ -37,6 +38,7 @@ const EMPTY: FormState = {
   soHopTong: 0,
   soDonLienQuan: 0,
   soLinhKien: 0,
+  anh: null,
 };
 
 const giaThueNgayDau = (gia: number) => Math.round(gia * 0.1);
@@ -92,6 +94,10 @@ export default function AdminProductsPage() {
   const [selected, setSelected] = useState<string | "new" | null>(null);
   const [form, setForm] = useState<FormState | null>(null);
   const [oldPrice, setOldPrice] = useState<number | null>(null);
+  // Thông báo giá đã đổi (từ → sang) ở lại sau khi lưu để Admin còn đọc được; reset khi chọn sản phẩm khác.
+  const [priceNotice, setPriceNotice] = useState<{ tu: number; sang: number } | null>(null);
+  const [anhFile, setAnhFile] = useState<File | null>(null);
+  const [anhPreview, setAnhPreview] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
@@ -142,6 +148,9 @@ export default function AdminProductsPage() {
     (async () => {
       setConfirmDelete(false);
       setMessage(null);
+      setPriceNotice(null);
+      setAnhFile(null);
+      setAnhPreview(null);
       if (selected === "new") {
         setForm({ ...EMPTY });
         setOldPrice(null);
@@ -206,8 +215,32 @@ export default function AdminProductsPage() {
         setMessage({ kind: "err", text: data.error ?? "Đã có lỗi xảy ra." });
         return;
       }
-      setMessage({ kind: "ok", text: isNew ? "Đã thêm sản phẩm." : "Đã lưu thay đổi." });
+      // Tải ảnh (nếu Admin đã chọn file) sau khi sản phẩm đã có trong DB.
+      let loiAnh: string | null = null;
+      let anhMoi: string | null = null;
+      if (anhFile) {
+        const fd = new FormData();
+        fd.append("file", anhFile);
+        const up = await api(`/api/admin/products/${form.slug}/image`, { method: "POST", body: fd });
+        if (!up) return;
+        const upData = await up.json();
+        if (up.ok) anhMoi = upData.anh;
+        else loiAnh = upData.error ?? "Không tải được ảnh.";
+      }
+
+      // Câu giải thích giá phải ở lại SAU khi lưu (trước đây biến mất ngay vì giá cũ bị ghi đè).
+      if (!isNew && oldPrice !== null && oldPrice !== form.giaNiemYet) {
+        setPriceNotice({ tu: oldPrice, sang: form.giaNiemYet });
+      }
       setOldPrice(form.giaNiemYet);
+      setAnhFile(null);
+      setAnhPreview(null);
+      if (anhMoi) patch({ anh: anhMoi });
+      setMessage(
+        loiAnh
+          ? { kind: "err", text: `${isNew ? "Đã thêm sản phẩm" : "Đã lưu thay đổi"} nhưng chưa tải được ảnh: ${loiAnh}` }
+          : { kind: "ok", text: isNew ? "Đã thêm sản phẩm." : "Đã lưu thay đổi." },
+      );
       if (isNew) setSelected(form.slug);
       await loadList();
     } finally {
@@ -236,6 +269,14 @@ export default function AdminProductsPage() {
   };
 
   const priceChanged = form && oldPrice !== null && form.giaNiemYet !== oldPrice;
+
+  const onPickImage = (file: File | null) => {
+    setAnhFile(file);
+    setAnhPreview((cu) => {
+      if (cu) URL.revokeObjectURL(cu);
+      return file ? URL.createObjectURL(file) : null;
+    });
+  };
 
   const handleLogout = async () => {
     await fetch("/api/staff/logout", { method: "POST" });
@@ -488,6 +529,40 @@ export default function AdminProductsPage() {
                         onChange={(e) => patch({ soNguoiMax: Number(e.target.value) })}
                       />
                     </label>
+                    <div className="sm:col-span-2">
+                      <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-ink-soft">
+                        Ảnh sản phẩm (JPG / PNG / WebP, tối đa 2MB)
+                      </span>
+                      <div className="flex items-center gap-4">
+                        <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded border border-ink/12 bg-cream">
+                          {(anhPreview ?? form.anh) ? (
+                            <Image
+                              src={(anhPreview ?? form.anh)!}
+                              alt={form.ten || "Ảnh sản phẩm"}
+                              fill
+                              unoptimized
+                              className="object-cover"
+                              sizes="80px"
+                            />
+                          ) : (
+                            <ImagePlus className="absolute left-1/2 top-1/2 h-6 w-6 -translate-x-1/2 -translate-y-1/2 text-ink-soft/60" />
+                          )}
+                        </div>
+                        <label className={`${btnGhost} cursor-pointer`}>
+                          <ImagePlus className="h-4 w-4" />
+                          {anhFile ? "Chọn ảnh khác" : form.anh ? "Đổi ảnh" : "Chọn ảnh"}
+                          <input
+                            type="file"
+                            accept="image/jpeg,image/png,image/webp"
+                            className="sr-only"
+                            onChange={(e) => onPickImage(e.target.files?.[0] ?? null)}
+                          />
+                        </label>
+                        <span className="min-w-0 truncate text-xs text-ink-soft">
+                          {anhFile ? `${anhFile.name} — sẽ tải lên khi bấm Lưu` : form.anh ? "" : "Chưa có ảnh (đang dùng ảnh mặc định)"}
+                        </span>
+                      </div>
+                    </div>
                     <label className="sm:col-span-2">
                       <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-ink-soft">
                         Mô tả ngắn
@@ -503,12 +578,20 @@ export default function AdminProductsPage() {
 
                   {/* Vùng thông báo cố định chiều cao: không đẩy các nút khi xuất hiện. */}
                   <div className="mt-4 min-h-[64px] space-y-2 text-xs">
-                    {priceChanged && (
+                    {priceChanged ? (
                       <p className="flex items-start gap-2 rounded bg-gold/10 p-2.5 text-ink">
                         <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-gold" />
-                        Giá đổi từ {formatVND(oldPrice!)} → {formatVND(form.giaNiemYet)}. Áp dụng ngay cho đơn tạo mới;
-                        đơn đã xác nhận trước đó giữ nguyên giá cũ.
+                        Giá đổi từ {formatVND(oldPrice!)} → {formatVND(form.giaNiemYet)}. Khi lưu, giá mới áp dụng ngay
+                        cho đơn tạo mới; đơn đã tạo trước đó giữ nguyên giá cũ.
                       </p>
+                    ) : (
+                      priceNotice && (
+                        <p className="flex items-start gap-2 rounded bg-gold/10 p-2.5 text-ink">
+                          <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-gold" />
+                          Đã đổi giá từ {formatVND(priceNotice.tu)} → {formatVND(priceNotice.sang)}. Giá mới áp dụng ngay
+                          cho đơn tạo mới; đơn đã tạo trước đó giữ nguyên giá cũ.
+                        </p>
+                      )
                     )}
                     {message && (
                       <p className={`font-medium ${message.kind === "ok" ? "text-forest" : "text-destructive"}`}>

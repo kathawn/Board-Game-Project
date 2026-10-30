@@ -20,6 +20,8 @@ export interface AdminProduct extends AdminProductSummary {
   soDonLienQuan: number;
   /** Chỉ đọc — số linh kiện trong checklist. */
   soLinhKien: number;
+  /** Đường dẫn ảnh hiện tại (null = chưa có ảnh, dùng ảnh mặc định). */
+  anh: string | null;
 }
 
 /** Trường Admin được phép nhập khi thêm/sửa. */

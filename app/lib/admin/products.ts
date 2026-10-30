@@ -1,5 +1,6 @@
 import { getPrisma } from "../db/client";
 import type { PrismaClient } from "../generated/prisma/client";
+import { xoaAnhCu } from "./image";
 import type { AdminProduct, AdminProductInput, AdminProductPage } from "./types";
 
 /** UC-15 (FR-ADM-03, BR-12): Admin thêm / sửa / xoá sản phẩm và cập nhật giá niêm yết, ghi thẳng bảng SanPham.
@@ -15,6 +16,8 @@ export interface AdminProductService {
   create(input: AdminProductInput): Promise<AdminResult>;
   update(slug: string, input: AdminProductInput): Promise<AdminResult>;
   remove(slug: string): Promise<AdminResult>;
+  /** Ghi đường dẫn ảnh mới; trả về ảnh cũ để route xoá file. */
+  setImage(slug: string, url: string): Promise<AdminResult<{ anhCu: string | null }>>;
 }
 
 export function createAdminProductService(getDb: () => PrismaClient): AdminProductService {
@@ -75,6 +78,7 @@ export function createAdminProductService(getDb: () => PrismaClient): AdminProdu
         soHopTong: row._count.hopGame,
         soDonLienQuan: row._count.chiTietDon,
         soLinhKien: row._count.linhKien,
+        anh: row.anhUrl,
       };
     },
 
@@ -122,10 +126,11 @@ export function createAdminProductService(getDb: () => PrismaClient): AdminProdu
     },
 
     async remove(slug) {
-      return getDb().$transaction(async (tx) => {
+      let anhUrl: string | null = null;
+      const xong = await getDb().$transaction(async (tx) => {
         const row = await tx.sanPham.findUnique({
           where: { slug },
-          select: { id: true, _count: { select: { chiTietDon: true, danhGia: true } } },
+          select: { id: true, anhUrl: true, _count: { select: { chiTietDon: true, danhGia: true } } },
         });
         if (!row) return { ok: false, status: 404, error: "Không tìm thấy sản phẩm." } as const;
         if (row._count.chiTietDon > 0 || row._count.danhGia > 0) {
@@ -147,11 +152,21 @@ export function createAdminProductService(getDb: () => PrismaClient): AdminProdu
             error: `Không thể xoá lúc này: có ${dangCho} khoản thanh toán QR đang chờ khách quét cho sản phẩm này. Thử lại sau khi QR hết hạn (tối đa 15 phút).`,
           } as const;
         }
+        anhUrl = row.anhUrl;
         await tx.linhKien.deleteMany({ where: { sanPhamId: row.id } });
         await tx.hopGame.deleteMany({ where: { sanPhamId: row.id } });
         await tx.sanPham.delete({ where: { id: row.id } });
-        return { ok: true } as const;
+        return { ok: true, anh: anhUrl } as const;
       });
+      if (xong.ok) await xoaAnhCu(xong.anh);
+      return xong.ok ? { ok: true } : xong;
+    },
+    async setImage(slug, url) {
+      const db = getDb();
+      const row = await db.sanPham.findUnique({ where: { slug }, select: { anhUrl: true } });
+      if (!row) return { ok: false, status: 404, error: "Không tìm thấy sản phẩm." };
+      await db.sanPham.update({ where: { slug }, data: { anhUrl: url } });
+      return { ok: true, anhCu: row.anhUrl };
     },
   };
 }
