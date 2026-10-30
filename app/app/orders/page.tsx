@@ -28,6 +28,14 @@ function trangThaiLabel(order: DonHang): { label: string; className: string } {
   if (order.trangThai === "Pending" && order.loai === "Thue") {
     return { label: "Chờ xác nhận", className: "bg-ink/10 text-ink-soft" };
   }
+  // Đơn mua dùng chung vòng đời: Confirmed (đã thanh toán) → có vận đơn thì "Đang giao" → Completed là "Đã giao".
+  if (order.loai === "Ban") {
+    if (order.trangThai === "Completed") return { label: "Đã giao", className: "bg-forest/15 text-forest" };
+    if (order.trangThai === "Confirmed" && order.shipments && order.shipments.length > 0) {
+      return { label: "Đang giao", className: "bg-gold/15 text-gold" };
+    }
+    if (order.trangThai === "Confirmed") return { label: "Đã thanh toán — chờ giao", className: "bg-sky/15 text-sky" };
+  }
   return TRANG_THAI_LABEL[order.trangThai];
 }
 
@@ -211,7 +219,7 @@ export default function OrdersPage() {
                       </div>
                       </div>
 
-                      {order.loai === "Thue" && order.shipments && order.shipments.length > 0 && (
+                      {order.shipments && order.shipments.length > 0 && (
                         <ul className="mt-4 flex flex-col gap-1.5 border-t border-ink/10 pt-3">
                           {order.shipments.map((sh) => (
                             <li key={sh.maVanDon} className="flex items-center justify-between gap-3 text-xs text-ink-soft">

@@ -135,6 +135,18 @@ export function createAdminProductService(getDb: () => PrismaClient): AdminProdu
             error: `Không thể xoá: sản phẩm đã có ${row._count.chiTietDon} dòng đơn hàng và ${row._count.danhGia} đánh giá. Hãy giữ lại để bảo toàn lịch sử đơn.`,
           } as const;
         }
+        // Khoản thanh toán còn chờ (QR chưa hết hạn) lưu snapshot dòng hàng theo slug: xoá lúc này khách quét xong sẽ
+        // phải hoàn ví thay vì nhận đơn, nên chặn để Admin thử lại sau khi QR hết hạn (tối đa 15 phút).
+        const dangCho = await tx.thanhToan.count({
+          where: { trangThai: "ChoThanhToan", hetHanLuc: { gt: new Date() }, snapshot: { contains: `"${slug}"` } },
+        });
+        if (dangCho > 0) {
+          return {
+            ok: false,
+            status: 409,
+            error: `Không thể xoá lúc này: có ${dangCho} khoản thanh toán QR đang chờ khách quét cho sản phẩm này. Thử lại sau khi QR hết hạn (tối đa 15 phút).`,
+          } as const;
+        }
         await tx.linhKien.deleteMany({ where: { sanPhamId: row.id } });
         await tx.hopGame.deleteMany({ where: { sanPhamId: row.id } });
         await tx.sanPham.delete({ where: { id: row.id } });

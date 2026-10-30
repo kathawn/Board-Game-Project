@@ -3,6 +3,7 @@ import { authService, sessionStore } from "@/lib/auth/server";
 import { getSessionEmail } from "@/lib/auth/request";
 import { tinhTienThueNgay } from "@/lib/products";
 import { catalog } from "@/lib/catalog/server";
+import { coHopDeThue } from "@/lib/cart/inventory";
 import { uocTinhKhoangCachKm, tinhPhiShip, tinhTienCocSanPham } from "@/lib/rentals/deposit";
 
 function soNgay(startDate: string, endDate: string): number {
@@ -72,6 +73,10 @@ export async function POST(request: Request) {
   const product = await catalog.get(productSlug);
   if (!product) {
     return Response.json({ error: "Không tìm thấy sản phẩm." }, { status: 404 });
+  }
+
+  if (!(await coHopDeThue([productSlug])).has(productSlug)) {
+    return Response.json({ error: `${product.ten} hiện chưa có hộp game để cho thuê.` }, { status: 409 });
   }
 
   const result = await rentalCartStore.addLine(email, {

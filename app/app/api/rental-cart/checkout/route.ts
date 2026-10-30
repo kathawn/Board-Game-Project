@@ -2,6 +2,9 @@ import { rentalCartStore, rentalOrderStore } from "@/lib/rentals/server";
 import { paymentService } from "@/lib/payments/server";
 import { authService, sessionStore } from "@/lib/auth/server";
 import { getSessionEmail } from "@/lib/auth/request";
+import { homNayVN } from "@/lib/cart/paginate";
+import { selectionStore } from "@/lib/cart/selection";
+import { coHopDeThue } from "@/lib/cart/inventory";
 import { tinhTienThueNgay } from "@/lib/products";
 import { catalog } from "@/lib/catalog/server";
 import { uocTinhKhoangCachKm, tinhPhiShip, tinhTienCocSanPham } from "@/lib/rentals/deposit";
@@ -21,9 +24,15 @@ export async function POST(request: Request) {
     return Response.json({ error: "Chưa đăng nhập." }, { status: 401 });
   }
 
-  const cartLines = await rentalCartStore.list(email);
-  if (cartLines.length === 0) {
+  // Khách có thể chỉ thanh toán một phần giỏ: chỉ các dòng đã tích chọn (lưu phía server) được chụp vào
+  // khoản thanh toán; dòng chưa chọn ở lại trong giỏ (dịch vụ thanh toán chỉ gỡ đúng dòng trong snapshot).
+  const tatCaDong = await rentalCartStore.list(email);
+  if (tatCaDong.length === 0) {
     return Response.json({ error: "Giỏ thuê đang trống." }, { status: 409 });
+  }
+  const cartLines = tatCaDong.filter((l) => selectionStore.isSelected(email, "thue", l.id));
+  if (cartLines.length === 0) {
+    return Response.json({ error: "Chưa chọn dòng nào trong giỏ thuê để thanh toán." }, { status: 409 });
   }
 
   // UC-04 bước 4/luồng ngoại lệ 4a (FR-CT-02): kiểm tra lại tồn kho theo
@@ -32,10 +41,26 @@ export async function POST(request: Request) {
   // một đơn khác có thể đã chiếm cùng khoảng ngày.
   // FR-ADM-03: giá và tên lấy từ danh mục hiện tại (Admin có thể vừa đổi giá hoặc xoá sản phẩm sau khi khách thêm vào giỏ).
   const products = await catalog.getMany(cartLines.map((l) => l.productSlug));
+  const today = homNayVN();
+  const coHop = await coHopDeThue(cartLines.map((l) => l.productSlug));
   for (const line of cartLines) {
+    // FR-CT-01: dòng chỉ hợp lệ với sản phẩm còn bán và khoảng ngày chưa qua — màn giỏ đã
+    // đánh dấu "cần xử lý" các dòng này; chặn ở đây để không tính cọc "ma" (giá 0) hay đặt thuê quá khứ.
     if (!products.has(line.productSlug)) {
       return Response.json(
         { error: `Sản phẩm ${line.productSlug} không còn kinh doanh, vui lòng xoá khỏi giỏ thuê.` },
+        { status: 409 },
+      );
+    }
+    if (!coHop.has(line.productSlug)) {
+      return Response.json(
+        { error: `${products.get(line.productSlug)!.ten} hiện chưa có hộp game để cho thuê, vui lòng xoá khỏi giỏ thuê.` },
+        { status: 409 },
+      );
+    }
+    if (line.startDate < today) {
+      return Response.json(
+        { error: `${products.get(line.productSlug)!.ten} có ngày bắt đầu đã qua, vui lòng sửa lại ngày thuê.` },
         { status: 409 },
       );
     }

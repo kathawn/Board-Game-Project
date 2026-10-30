@@ -19,11 +19,16 @@ export async function lockResource(tx: Tx, resource: string): Promise<void> {
   }
 }
 
-export async function nextSequence(tx: Tx | { $queryRaw: Tx["$queryRaw"] }, name: "seq_madon_thue" | "seq_mathanhtoan"): Promise<number> {
+export async function nextSequence(
+  tx: Tx | { $queryRaw: Tx["$queryRaw"] },
+  name: "seq_madon_thue" | "seq_madon_ban" | "seq_mathanhtoan",
+): Promise<number> {
   const rows =
     name === "seq_madon_thue"
       ? await tx.$queryRaw<{ n: bigint | number }[]>`SELECT NEXT VALUE FOR dbo.seq_madon_thue AS n`
-      : await tx.$queryRaw<{ n: bigint | number }[]>`SELECT NEXT VALUE FOR dbo.seq_mathanhtoan AS n`;
+      : name === "seq_madon_ban"
+        ? await tx.$queryRaw<{ n: bigint | number }[]>`SELECT NEXT VALUE FOR dbo.seq_madon_ban AS n`
+        : await tx.$queryRaw<{ n: bigint | number }[]>`SELECT NEXT VALUE FOR dbo.seq_mathanhtoan AS n`;
   return Number(rows[0].n);
 }
 

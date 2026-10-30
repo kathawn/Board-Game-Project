@@ -32,6 +32,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     chiTietDonId,
     items: parsed,
     ghiChuNgoai: typeof ghiChuNgoai === "string" ? ghiChuNgoai.slice(0, 500) : "",
+    nhanVienId: auth.staff.id,
   });
   if (!result.ok) return Response.json({ error: result.error }, { status: result.status });
   return Response.json({ ok: true, coLoi: result.coLoi, trangThaiHop: result.trangThaiHop });

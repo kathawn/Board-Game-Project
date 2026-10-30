@@ -118,6 +118,8 @@ export interface InspectInput {
   chiTietDonId: string;
   items: { linhKienId: string; ketQua: KetQuaKiemDem; soLuongLoi?: number }[];
   ghiChuNgoai?: string;
+  /** UC-13: nhân viên (Staff hoặc Admin) đang đăng nhập và lập biên bản — ghi vào BienBanKiemDem.nhanVienId để truy vết. */
+  nhanVienId?: string;
 }
 
 export interface SettleOutcome {
@@ -514,11 +516,14 @@ export function createReturnService(deps: { getDb: () => PrismaClient; now?: () 
           const ketThuc = await doiTrangThaiHop(tx, maHop, trangThaiHop);
           if (!ketThuc.ok) throw new ReturnError(ketThuc.status, ketThuc.error);
 
-          const staff = await tx.nhanVien.findFirst({
-            where: { vaiTro: "Staff", dangHoatDong: true },
-            orderBy: { email: "asc" },
-            select: { id: true },
-          });
+          // Người lập biên bản là nhân viên đang đăng nhập; chỉ khi gọi không qua phiên (seed/test) mới rơi về Staff đầu tiên.
+          const staff = input.nhanVienId
+            ? await tx.nhanVien.findFirst({ where: { id: input.nhanVienId, dangHoatDong: true }, select: { id: true } })
+            : await tx.nhanVien.findFirst({
+                where: { vaiTro: "Staff", dangHoatDong: true },
+                orderBy: { email: "asc" },
+                select: { id: true },
+              });
           if (!staff) throw new ReturnError(409, "Chưa có tài khoản nhân viên nào để lập biên bản.");
 
           const bienBan: BienBanKiemDemJson = {

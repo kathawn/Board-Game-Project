@@ -21,6 +21,9 @@ import { formatVND } from "@/lib/products";
 
 interface PaymentView {
   id: string;
+  mucDich: "TienHang" | "TienCoc" | "ThuThem";
+  phiShip: number;
+  muaLines: { productName: string; soLuong: number; donGia: number }[];
   soTien: number;
   trangThai: "ChoThanhToan" | "DaThanhToan" | "HetHieuLuc";
   ketQua: "ThanhCong" | "MotPhanHetHang" | "HetHang" | "ThatBai" | "HoanQuaHan" | "SaiSoTien" | null;
@@ -83,6 +86,7 @@ export default function PayPage({ params }: { params: Promise<{ id: string }> })
   const [soDuVi, setSoDuVi] = useState(0);
 
   const choThanhToan = payment?.trangThai === "ChoThanhToan";
+  const laMua = payment?.mucDich === "TienHang";
 
   // Poll cho đến khi webhook về (FR-TTGV-07: trang không có nút xác nhận thủ công).
   // Dừng poll khi khoản đã ra khỏi ChoThanhToan.
@@ -135,7 +139,7 @@ export default function PayPage({ params }: { params: Promise<{ id: string }> })
       <Reveal className="rounded bg-paper p-12 text-center text-sm text-ink-soft">
         Không tìm thấy khoản thanh toán.{" "}
         <Link href="/cart" className="font-semibold text-wine hover:underline">
-          Quay lại giỏ thuê
+          Quay lại giỏ hàng
         </Link>
       </Reveal>,
     );
@@ -147,7 +151,9 @@ export default function PayPage({ params }: { params: Promise<{ id: string }> })
         <span className="mb-3 inline-block text-xs font-semibold uppercase tracking-[0.18em] text-gold">
           Thanh toán
         </span>
-        <h1 className="font-heading text-3xl font-semibold text-ink">Thanh toán tiền cọc qua mã QR</h1>
+        <h1 className="font-heading text-3xl font-semibold text-ink">
+          {laMua ? "Thanh toán đơn mua qua mã QR" : "Thanh toán tiền cọc qua mã QR"}
+        </h1>
         <p className="mt-2 text-sm font-light text-ink-soft">
           Mã thanh toán <span className="font-semibold text-ink">{payment.id}</span>
         </p>
@@ -169,13 +175,32 @@ export default function PayPage({ params }: { params: Promise<{ id: string }> })
             <div className="flex flex-col">
               <div className="flex items-center justify-between border-b border-ink/8 pb-4">
                 <span className="text-xs font-semibold uppercase tracking-wider text-ink-soft">
-                  Số tiền cần thu (tiền cọc)
+                  {laMua ? "Số tiền cần thu (hàng + ship)" : "Số tiền cần thu (tiền cọc)"}
                 </span>
                 <span className="font-heading text-2xl font-bold text-wine">{formatVND(payment.soTien)}</span>
               </div>
 
               <ul className="my-4 flex flex-col gap-2.5">
-                {payment.lines.map((l) => (
+                {laMua &&
+                  payment.muaLines.map((l) => (
+                    <li key={l.productName} className="flex items-start justify-between gap-4 text-sm">
+                      <span>
+                        <span className="font-heading font-semibold text-ink">{l.productName}</span>
+                        <br />
+                        <span className="text-xs text-ink-soft">
+                          {l.soLuong} × {formatVND(l.donGia)}
+                        </span>
+                      </span>
+                      <span className="shrink-0 text-ink">{formatVND(l.donGia * l.soLuong)}</span>
+                    </li>
+                  ))}
+                {laMua && (
+                  <li className="flex items-start justify-between gap-4 border-t border-cream pt-2 text-sm text-ink-soft">
+                    <span>Phí ship (1 chiều)</span>
+                    <span className="shrink-0 text-ink">{formatVND(payment.phiShip)}</span>
+                  </li>
+                )}
+                {!laMua && payment.lines.map((l) => (
                   <li key={`${l.productName}-${l.startDate}`} className="flex items-start justify-between gap-4 text-sm">
                     <span>
                       <span className="font-heading font-semibold text-ink">{l.productName}</span>
@@ -236,7 +261,7 @@ export default function PayPage({ params }: { params: Promise<{ id: string }> })
             actions={
               <>
                 <Link href="/products" className={btnPrimary}>
-                  Chọn sản phẩm / ngày khác
+                  {laMua ? "Chọn sản phẩm khác" : "Chọn sản phẩm / ngày khác"}
                 </Link>
                 <Link href="/orders" className={btnGhost}>
                   Xem lịch sử đơn
@@ -245,9 +270,10 @@ export default function PayPage({ params }: { params: Promise<{ id: string }> })
             }
           >
             <p>
-              <span className="font-semibold text-ink">{payment.dongHetHang.join(", ")}</span> đã được một khách khác
-              thanh toán thành công trước bạn. Hệ thống ưu tiên theo thời điểm thanh toán thành công, không giữ chỗ
-              trước (BRU-07), nên đơn của bạn không được tạo.
+              <span className="font-semibold text-ink">{payment.dongHetHang.join(", ")}</span>{" "}
+              {laMua
+                ? "không còn đủ số lượng bạn chọn vì khách khác đã thanh toán trước. Hệ thống chỉ bán trọn số lượng đã chọn (không bán một phần) và ưu tiên theo thời điểm thanh toán thành công, không giữ chỗ trước (BRU-07), nên đơn của bạn không được tạo."
+                : "đã được một khách khác thanh toán thành công trước bạn. Hệ thống ưu tiên theo thời điểm thanh toán thành công, không giữ chỗ trước (BRU-07), nên đơn của bạn không được tạo."}
             </p>
             <div className="mt-4 flex items-center justify-center gap-3 rounded bg-cream px-4 py-3 text-left">
               <Wallet className="h-5 w-5 shrink-0 text-wine" />
@@ -278,16 +304,29 @@ export default function PayPage({ params }: { params: Promise<{ id: string }> })
             }
           >
             <p>
-              Đã nhận <span className="font-semibold text-ink">{formatVND(payment.soTien)}</span> tiền cọc. Đơn thuê{" "}
-              <span className="font-semibold text-ink">{payment.orderId}</span> đã được tạo ở trạng thái &quot;Chờ xác
-              nhận&quot; và đang chờ nhân viên xác nhận (UC-05).
+              {laMua ? (
+                <>
+                  Đã nhận <span className="font-semibold text-ink">{formatVND(payment.soTien)}</span>. Đơn mua{" "}
+                  <span className="font-semibold text-ink">{payment.orderId}</span> đã được tạo ở trạng thái
+                  &quot;Đã xác nhận&quot; và hộp game đã được chuyển sang Đã bán.
+                </>
+              ) : (
+                <>
+                  Đã nhận <span className="font-semibold text-ink">{formatVND(payment.soTien)}</span> tiền cọc. Đơn thuê{" "}
+                  <span className="font-semibold text-ink">{payment.orderId}</span> đã được tạo ở trạng thái &quot;Chờ
+                  xác nhận&quot; và đang chờ nhân viên xác nhận (UC-05).
+                </>
+              )}
             </p>
             {payment.ketQua === "MotPhanHetHang" && (
               <div className="mt-4 flex items-center justify-center gap-3 rounded bg-cream px-4 py-3 text-left">
                 <Wallet className="h-5 w-5 shrink-0 text-wine" />
                 <p className="text-xs">
-                  <span className="font-semibold text-ink">{payment.dongHetHang.join(", ")}</span> đã có khách khác
-                  thanh toán trước (BRU-07) nên không nằm trong đơn. Đã hoàn{" "}
+                  <span className="font-semibold text-ink">{payment.dongHetHang.join(", ")}</span>{" "}
+                  {laMua
+                    ? "không còn đủ số lượng bạn chọn (khách khác thanh toán trước, BRU-07; hệ thống không bán một phần số lượng) nên không nằm trong đơn."
+                    : "đã có khách khác thanh toán trước (BRU-07) nên không nằm trong đơn."}{" "}
+                  Đã hoàn{" "}
                   <span className="font-semibold text-ink">{formatVND(payment.soTienHoan)}</span> vào Ví điện tử nội
                   bộ (số dư: <span className="font-semibold text-ink">{formatVND(soDuVi)}</span>).
                 </p>
@@ -303,7 +342,7 @@ export default function PayPage({ params }: { params: Promise<{ id: string }> })
             tieuDe="Mã QR đã hết hiệu lực"
             actions={
               <Link href="/cart" className={btnPrimary}>
-                Quay lại giỏ thuê để thử lại
+                {laMua ? "Quay lại giỏ mua để thử lại" : "Quay lại giỏ thuê để thử lại"}
               </Link>
             }
           >

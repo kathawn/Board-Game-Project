@@ -1,339 +1,106 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { Trash2, CalendarRange, Pencil } from "lucide-react";
+import { Suspense, useCallback, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { CalendarRange, ShoppingBag } from "lucide-react";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { Reveal } from "@/components/Reveal";
-import { PurchaseCartSection } from "@/components/PurchaseCartSection";
-import { formatVND } from "@/lib/products";
-import type { RentalCartLine } from "@/lib/rentals/store";
+import { PurchaseCartTab } from "@/components/cart/PurchaseCartTab";
+import { RentalCartTab } from "@/components/cart/RentalCartTab";
 
-interface TienCocInfo {
-  diaChiNhan: string;
-  doiTac: "GreenSM" | "ShopeeExpress";
-  tongTienThue: number;
-  tongTienCoc: number;
+type Tab = "thue" | "mua";
+
+function TabButton({
+  active,
+  count,
+  icon,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  count: number | null;
+  icon: React.ReactNode;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      role="tab"
+      aria-selected={active}
+      onClick={onClick}
+      className={`flex items-center gap-2 whitespace-nowrap border-b-2 px-5 py-3 text-xs font-semibold uppercase tracking-wider transition-colors ${
+        active ? "border-wine text-wine" : "border-transparent text-ink-soft hover:text-ink"
+      }`}
+    >
+      {icon}
+      {children}
+      {/* Chỗ của badge luôn được giữ để tab không nhảy khi số lượng tải xong. */}
+      <span
+        className={`min-w-[1.5rem] rounded-full px-1.5 py-0.5 text-center text-[10px] tabular-nums ${
+          active ? "bg-wine text-paper" : "bg-ink/10 text-ink-soft"
+        } ${count === null ? "invisible" : ""}`}
+      >
+        {count ?? 0}
+      </span>
+    </button>
+  );
 }
 
-const TEN_DOI_TAC: Record<TienCocInfo["doiTac"], string> = {
-  GreenSM: "Green SM",
-  ShopeeExpress: "Shopee Express",
-};
-
-function soNgay(startDate: string, endDate: string): number {
-  const ms = new Date(endDate).getTime() - new Date(startDate).getTime();
-  return Math.round(ms / 86_400_000);
-}
-
-export default function CartPage() {
+function CartView() {
   const router = useRouter();
-  const [loading, setLoading] = useState(true);
-  const [lines, setLines] = useState<RentalCartLine[]>([]);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editStart, setEditStart] = useState("");
-  const [editEnd, setEditEnd] = useState("");
-  const [editError, setEditError] = useState<string | null>(null);
-  const [savingEdit, setSavingEdit] = useState(false);
-  const [checkingOut, setCheckingOut] = useState(false);
-  const [checkoutError, setCheckoutError] = useState<string | null>(null);
-  const [dongGia, setDongGia] = useState<{ lineId: string; tienThue: number; tienCoc: number; conBan: boolean; ten: string }[]>([]);
-  const [coc, setCoc] = useState<TienCocInfo>({
-    diaChiNhan: "",
-    doiTac: "GreenSM",
-    tongTienThue: 0,
-    tongTienCoc: 0,
-  });
+  const searchParams = useSearchParams();
+  const tab: Tab = searchParams.get("tab") === "mua" ? "mua" : "thue";
+  const [soThue, setSoThue] = useState<number | null>(null);
+  const [soMua, setSoMua] = useState<number | null>(null);
 
-  const reloadCart = async () => {
-    const response = await fetch("/api/rental-cart");
-    if (!response.ok) {
-      router.push("/login");
-      return;
-    }
-    const data = await response.json();
-    setLines(data.lines);
-    setDongGia(data.coc.dongGia);
-    setCoc({
-      diaChiNhan: data.coc.diaChiNhan,
-      doiTac: data.coc.doiTac,
-      tongTienThue: data.coc.tongTienThue,
-      tongTienCoc: data.coc.tongTienCoc,
-    });
-  };
+  const onUnauthorized = useCallback(() => router.push("/login"), [router]);
 
-  useEffect(() => {
-    (async () => {
-      await reloadCart();
-      setLoading(false);
-    })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [router]);
-
-  const handleRemove = async (id: string) => {
-    setLines((prev) => prev.filter((l) => l.id !== id));
-    await fetch(`/api/rental-cart/${id}`, { method: "DELETE" });
-    await reloadCart();
-  };
-
-  const startEdit = (line: RentalCartLine) => {
-    setEditingId(line.id);
-    setEditStart(line.startDate);
-    setEditEnd(line.endDate);
-    setEditError(null);
-  };
-
-  const cancelEdit = () => {
-    setEditingId(null);
-    setEditError(null);
-  };
-
-  const saveEdit = async (id: string) => {
-    setEditError(null);
-    setSavingEdit(true);
-    try {
-      const response = await fetch(`/api/rental-cart/${id}`, {
-        method: "PATCH",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ startDate: editStart, endDate: editEnd }),
-      });
-      const data = await response.json();
-
-      if (!response.ok) {
-        setEditError(data.error ?? "Đã có lỗi xảy ra, vui lòng thử lại.");
-        return;
-      }
-
-      setLines((prev) => prev.map((l) => (l.id === id ? data.line : l)));
-      setEditingId(null);
-    } finally {
-      setSavingEdit(false);
-    }
-  };
-
-  // FR-ADM-03: tên do server trả kèm giá từng dòng, còn bán hay không do server báo (Admin có thể đã xoá sản phẩm) — không tra danh mục tĩnh.
-  const rows = lines
-    .map((line) => {
-      const gia = dongGia.find((d) => d.lineId === line.id);
-      return { line, product: { ten: gia?.ten ?? line.productSlug }, tienThue: gia?.tienThue ?? 0, conBan: gia?.conBan ?? false };
-    })
-    .filter((row) => row.conBan);
-
-  const handleCheckout = async () => {
-    setCheckoutError(null);
-    setCheckingOut(true);
-    try {
-      const response = await fetch("/api/rental-cart/checkout", { method: "POST" });
-      const data = await response.json();
-
-      if (!response.ok) {
-        setCheckoutError(data.error ?? "Đã có lỗi xảy ra, vui lòng thử lại.");
-        return;
-      }
-
-      // UC-10: sang trang thanh toán QR; đơn thuê chỉ được tạo khi webhook thành công về.
-      router.push(`/pay/${data.paymentId}`);
-    } finally {
-      setCheckingOut(false);
-    }
-  };
-
-  if (loading) {
-    return (
-      <>
-        <Header />
-        <main className="flex min-h-screen items-center justify-center bg-cream px-5 pt-32">
-          <p className="text-sm text-ink-soft">Đang tải...</p>
-        </main>
-        <Footer />
-      </>
-    );
-  }
+  const setTab = (next: Tab) => router.replace(`/cart?tab=${next}`, { scroll: false });
 
   return (
     <>
       <Header />
 
       <main className="bg-cream px-5 pb-24 pt-32 sm:px-8">
-        <div className="mx-auto max-w-[840px]">
-          <Reveal className="mb-10 text-center">
-            <span className="mb-3 inline-block text-xs font-semibold uppercase tracking-[0.18em] text-gold">
-              Giỏ thuê
-            </span>
-            <h1 className="font-heading text-3xl font-semibold text-ink">
-              Giỏ thuê của bạn
-            </h1>
-            <p className="mt-2 text-sm font-light text-ink-soft">
-              Mỗi sản phẩm có thể chọn khoảng ngày thuê riêng (FR-CT-01).
+        <div className="mx-auto max-w-[1080px]">
+          <Reveal className="mb-8">
+            <span className="mb-3 inline-block text-xs font-semibold uppercase tracking-[0.18em] text-gold">Giỏ hàng</span>
+            <h1 className="font-heading text-3xl font-semibold text-ink">Giỏ hàng của bạn</h1>
+            <p className="mt-2 max-w-[560px] text-sm font-light text-ink-soft">
+              Giỏ thuê và giỏ mua tách riêng: thuê chọn ngày cho từng sản phẩm (FR-CT-01), mua chọn số lượng (FR-BH-08).
             </p>
           </Reveal>
 
-          {rows.length === 0 ? (
-            <Reveal className="rounded bg-paper p-12 text-center text-sm text-ink-soft">
-              Giỏ thuê đang trống.{" "}
-              <Link href="/products" className="font-semibold text-wine hover:underline">
-                Xem sản phẩm cho thuê
-              </Link>
-            </Reveal>
-          ) : (
-            <>
-              <div className="flex flex-col gap-4">
-                {rows.map(({ line, product, tienThue }, i) => (
-                  <Reveal key={line.id} delay={i * 60}>
-                    <article className="flex flex-col gap-3 rounded bg-paper p-5 shadow-[0_20px_40px_-20px_rgba(42,31,26,0.2)]">
-                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
-                        <div className="flex items-start gap-3.5">
-                          <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-cream text-ink-soft">
-                            <CalendarRange className="h-4 w-4" />
-                          </div>
-                          <div>
-                            <h3 className="font-heading text-sm font-semibold text-ink">
-                              {product.ten}
-                            </h3>
-                            <p className="mt-1 text-xs text-ink-soft">
-                              Thuê {line.startDate} → {line.endDate} ({soNgay(line.startDate, line.endDate)} ngày)
-                            </p>
-                          </div>
-                        </div>
+          <div role="tablist" className="mb-6 flex border-b border-ink/10">
+            <TabButton active={tab === "thue"} count={soThue} icon={<CalendarRange className="h-4 w-4" />} onClick={() => setTab("thue")}>
+              Giỏ thuê
+            </TabButton>
+            <TabButton active={tab === "mua"} count={soMua} icon={<ShoppingBag className="h-4 w-4" />} onClick={() => setTab("mua")}>
+              Giỏ mua
+            </TabButton>
+          </div>
 
-                        <div className="flex items-center justify-between gap-4 sm:flex-col sm:items-end sm:justify-center sm:gap-1.5">
-                          <span className="font-heading text-sm font-bold text-ink">
-                            {formatVND(tienThue)}
-                          </span>
-                          <div className="flex items-center gap-4">
-                            <button
-                              type="button"
-                              onClick={() => (editingId === line.id ? cancelEdit() : startEdit(line))}
-                              aria-label="Sửa ngày thuê"
-                              className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-ink-soft hover:text-wine"
-                            >
-                              <Pencil className="h-3.5 w-3.5" />
-                              {editingId === line.id ? "Huỷ sửa" : "Sửa ngày"}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleRemove(line.id)}
-                              aria-label="Xoá khỏi giỏ thuê"
-                              className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-destructive hover:underline"
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                              Xoá
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-
-                      {editingId === line.id && (
-                        <div className="flex flex-col gap-3 border-t border-ink/8 pt-3.5 sm:flex-row sm:items-end">
-                          <div className="flex-1">
-                            <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-ink-soft">
-                              Ngày bắt đầu
-                            </label>
-                            <input
-                              type="date"
-                              value={editStart}
-                              onChange={(e) => setEditStart(e.target.value)}
-                              className="w-full rounded border border-ink/18 bg-cream py-2.5 px-3 text-sm text-ink focus:border-wine focus:outline-none"
-                            />
-                          </div>
-                          <div className="flex-1">
-                            <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-ink-soft">
-                              Ngày kết thúc
-                            </label>
-                            <input
-                              type="date"
-                              value={editEnd}
-                              min={editStart}
-                              onChange={(e) => setEditEnd(e.target.value)}
-                              className="w-full rounded border border-ink/18 bg-cream py-2.5 px-3 text-sm text-ink focus:border-wine focus:outline-none"
-                            />
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => saveEdit(line.id)}
-                            disabled={savingEdit}
-                            className="bg-wine px-5 py-2.5 text-xs font-semibold uppercase tracking-wider text-paper transition-colors hover:bg-wine-deep disabled:opacity-60"
-                          >
-                            {savingEdit ? "Đang lưu..." : "Lưu"}
-                          </button>
-                        </div>
-                      )}
-                      {editingId === line.id && editError && (
-                        <p className="text-xs font-medium text-destructive">{editError}</p>
-                      )}
-                    </article>
-                  </Reveal>
-                ))}
-              </div>
-
-              <Reveal className="mt-8 rounded bg-paper p-6 shadow-[0_20px_40px_-20px_rgba(42,31,26,0.2)]">
-                <div className="mb-4 flex items-start justify-between gap-4 text-xs text-ink-soft">
-                  <span>
-                    Địa chỉ nhận hàng (hồ sơ cá nhân):{" "}
-                    <span className="font-semibold text-ink">
-                      {coc.diaChiNhan || "Chưa cập nhật — vào hồ sơ cá nhân để thêm địa chỉ."}
-                    </span>
-                    <br />
-                    Đối tác giao vận dự kiến (BRU-05): <span className="font-semibold text-ink">{TEN_DOI_TAC[coc.doiTac]}</span>
-                  </span>
-                  <Link href="/profile" className="shrink-0 font-semibold text-wine hover:underline">
-                    Sửa
-                  </Link>
-                </div>
-
-                <div className="flex items-center justify-between border-t border-ink/8 pt-4">
-                  <span className="text-sm font-semibold uppercase tracking-wider text-ink-soft">
-                    Tổng tiền thuê (BRU-02)
-                  </span>
-                  <span className="font-heading text-lg font-semibold text-ink">
-                    {formatVND(coc.tongTienThue)}
-                  </span>
-                </div>
-                <div className="mt-2 flex items-center justify-between">
-                  <span className="text-sm font-semibold uppercase tracking-wider text-ink-soft">
-                    Tổng tiền cọc (BRU-01)
-                  </span>
-                  <span className="font-heading text-xl font-bold text-wine">
-                    {formatVND(coc.tongTienCoc)}
-                  </span>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={handleCheckout}
-                  disabled={checkingOut || !coc.diaChiNhan}
-                  className="mt-5 w-full bg-wine px-5 py-3 text-xs font-semibold uppercase tracking-wider text-paper transition-colors hover:bg-wine-deep disabled:opacity-60"
-                >
-                  {checkingOut ? "Đang xử lý..." : "Thanh toán cọc qua mã QR"}
-                </button>
-                {!coc.diaChiNhan && (
-                  <p className="mt-2 text-center text-xs text-destructive">
-                    Cần có địa chỉ nhận hàng (hồ sơ cá nhân) trước khi đặt thuê.
-                  </p>
-                )}
-                {checkoutError && (
-                  <p className="mt-2 text-center text-xs font-medium text-destructive">{checkoutError}</p>
-                )}
-              </Reveal>
-
-              <p className="mt-3 text-center text-xs text-ink-soft">
-                Tiền thuê tính theo biểu giá lũy tiến giảm dần của BRU-02 (ngày 1 = 10% giá niêm yết, ngày 2-10 =
-                7%/ngày, ngày 11+ = 5%/ngày, FR-CT-04). Tiền cọc = giá niêm yết mỗi sản phẩm + phí ship ước tính chiều
-                giao (do {TEN_DOI_TAC[coc.doiTac]} báo giá theo khoảng cách, BRU-05) × 2, dự trù cho cả hai chiều giao
-                vận bắt buộc (FR-CT-03). Bấm &quot;Thanh toán cọc qua mã QR&quot; sẽ sinh mã QR MoMo (giả lập,
-                FR-TTGV-06); đơn thuê chỉ được tạo ở trạng thái chờ nhân viên xác nhận (FR-CT-05) sau khi hệ thống nhận
-                webhook thanh toán thành công và sản phẩm/ngày vẫn còn khả dụng (FR-TTGV-07, BRU-07).
-              </p>
-            </>
-          )}
-
-          <PurchaseCartSection />
+          {/* Cả hai tab luôn được mount để badge đếm đúng ngay từ đầu; tab không chọn chỉ bị ẩn. */}
+          <div role="tabpanel" hidden={tab !== "thue"}>
+            <RentalCartTab onUnauthorized={onUnauthorized} onCount={setSoThue} />
+          </div>
+          <div role="tabpanel" hidden={tab !== "mua"}>
+            <PurchaseCartTab onUnauthorized={onUnauthorized} onCount={setSoMua} />
+          </div>
         </div>
       </main>
 
       <Footer />
     </>
+  );
+}
+
+export default function CartPage() {
+  return (
+    <Suspense fallback={null}>
+      <CartView />
+    </Suspense>
   );
 }
