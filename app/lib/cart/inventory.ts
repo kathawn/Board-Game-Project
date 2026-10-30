@@ -1,6 +1,7 @@
 import { getPrisma } from "@/lib/db/client";
 import type { Tx } from "@/lib/db/tx";
-import { checkStock, getProductBySlug, type StockCheckResult } from "@/lib/products";
+import { checkStock, type StockCheckResult } from "@/lib/products";
+import { catalog } from "@/lib/catalog/server";
 
 type Db = Pick<Tx, "hopGame" | "chiTietDonHang" | "sanPham">;
 
@@ -37,9 +38,22 @@ export async function demHopAvailable(slugs: string[]): Promise<Map<string, numb
   return demHopCoTheBan(getPrisma(), slugs);
 }
 
+/** UC-15: sản phẩm Admin vừa tạo chưa có hộp game vật lý nào thì chưa thể cho thuê — khách trả cọc xong Staff sẽ không có
+ * hộp để bàn giao (UC-06). Hộp đã Sold không còn trong kho nên không tính. */
+export async function coHopDeThue(slugs: string[]): Promise<Set<string>> {
+  const uniq = [...new Set(slugs)];
+  if (uniq.length === 0) return new Set();
+  const rows = await getPrisma().hopGame.findMany({
+    where: { sanPham: { slug: { in: uniq } }, trangThai: { not: "Sold" } },
+    select: { sanPham: { select: { slug: true } } },
+    distinct: ["sanPhamId"],
+  });
+  return new Set(rows.map((r) => r.sanPham.slug));
+}
+
 /** checkStock (FR-BH-04) nhưng dựa trên tồn kho thật trong DB. */
 export async function kiemTraTonKho(slug: string, soLuong: number): Promise<StockCheckResult> {
-  const product = getProductBySlug(slug);
+  const product = await catalog.get(slug);
   if (!product) return { ok: false, error: "Không tìm thấy sản phẩm." };
   const ton = (await demHopAvailable([slug])).get(slug) ?? 0;
   return checkStock({ ...product, soLuongTon: ton }, soLuong);

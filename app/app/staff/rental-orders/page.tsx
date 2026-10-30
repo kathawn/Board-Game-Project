@@ -5,6 +5,7 @@ import { AlertTriangle, ChevronLeft, ChevronRight, MapPin, PackageCheck, Search,
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { formatVND } from "@/lib/products";
+import { staffFetch } from "@/lib/auth/staff-client";
 import type { RentalOrder, RentalOrderPage, RentalStage } from "@/lib/rentals/order-store";
 import { TEN_DOI_TAC, type TrangThaiVanChuyen } from "@/lib/shipping/types";
 
@@ -47,7 +48,7 @@ export default function StaffRentalOrdersPage() {
 
   const load = useCallback(async () => {
     const params = new URLSearchParams({ q: qApplied, stage, page: String(page) });
-    const response = await fetch(`/api/staff/rental-orders?${params}`);
+    const response = await staffFetch(`/api/staff/rental-orders?${params}`);
     const result: RentalOrderPage = await response.json();
     setData(result);
     // Giữ đơn đang chọn nếu còn trong trang; không thì chọn đơn đầu tiên (đơn cần xử lý trước).
@@ -74,7 +75,7 @@ export default function StaffRentalOrdersPage() {
     setError((p) => ({ ...p, [order.id]: "" }));
     setBusy(key);
     try {
-      const response = await fetch(`/api/staff/rental-orders/${order.id}/${action}`, { method: "POST" });
+      const response = await staffFetch(`/api/staff/rental-orders/${order.id}/${action}`, { method: "POST" });
       const result = await response.json();
       if (!response.ok) {
         setError((p) => ({ ...p, [order.id]: result.error ?? "Đã có lỗi xảy ra." }));

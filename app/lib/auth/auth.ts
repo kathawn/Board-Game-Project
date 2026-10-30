@@ -28,13 +28,13 @@ export type AuthService = {
   ): Promise<ChangePasswordResult>;
 };
 
-function hashPassword(password: string): string {
+export function hashPassword(password: string): string {
   const salt = randomBytes(16).toString("hex");
   const derived = scryptSync(password, salt, 64).toString("hex");
   return `${salt}:${derived}`;
 }
 
-function verifyPassword(password: string, stored: string): boolean {
+export function verifyPassword(password: string, stored: string): boolean {
   const [salt, derivedHex] = stored.split(":");
   const derived = scryptSync(password, salt, 64);
   const expected = Buffer.from(derivedHex, "hex");

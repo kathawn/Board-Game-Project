@@ -32,6 +32,9 @@ export const THOI_HAN_QR_MS = 15 * 60 * 1000;
 export interface PaymentLine extends RentalOrderLine {
   /** id dòng trong giỏ thuê, để gỡ khỏi giỏ khi khoản thanh toán đã được xử lý. */
   cartLineId: string;
+  /** FR-ADM-03: giá niêm yết lúc khách chốt giỏ — ghi vào ChiTietDonHang.giaNiemYetChot khi tạo đơn. Khoản thanh toán
+   * tạo trước khi có trường này không có giá trị → rơi về giá hiện tại của sản phẩm. */
+  giaNiemYet?: number;
 }
 
 /** Một dòng đơn mua trong snapshot khoản thanh toán (UC-03): giá/số lượng được chốt lúc sinh QR. */
@@ -468,10 +471,18 @@ export function createPaymentService(deps: {
           const slugs = [...new Set(snap.lines.map((l) => l.productSlug))].sort();
           for (const slug of slugs) await lockResource(tx, `sp:${slug}`);
 
+          // FR-ADM-03: Admin có thể đã xoá sản phẩm giữa lúc khách quét QR và lúc tiền về. Dòng nào trỏ tới sản phẩm
+          // không còn tồn tại thì coi như hết hàng và hoàn ví — không ném lỗi, để tiền MoMo đã thu không bao giờ
+          // rơi vào trạng thái "không có đơn, không có hoàn".
+          const spTonTai = new Set(
+            (await tx.sanPham.findMany({ where: { slug: { in: slugs } }, select: { slug: true } })).map((s) => s.slug),
+          );
+
           const conLai: PaymentLine[] = [];
           const hetHang: PaymentLine[] = [];
           for (const line of snap.lines) {
             const biChiem =
+              !spTonTai.has(line.productSlug) ||
               (await tx.chiTietDonHang.findFirst({
                 where: {
                   sanPham: { slug: line.productSlug },
@@ -495,9 +506,10 @@ export function createPaymentService(deps: {
           if (conLai.length > 0) {
             const sanPham = await tx.sanPham.findMany({
               where: { slug: { in: conLai.map((l) => l.productSlug) } },
-              select: { id: true, slug: true },
+              select: { id: true, slug: true, giaNiemYet: true },
             });
             const idOf = new Map(sanPham.map((s) => [s.slug, s.id]));
+            const giaHienTai = new Map(sanPham.map((s) => [s.slug, Number(s.giaNiemYet)]));
             const tongTienCoc = conLai.reduce((sum, l) => sum + l.tienCoc, 0);
             const phiShipNhan = tinhPhiShip(uocTinhKhoangCachKm(snap.diaChiNhan)).phiShip;
 
@@ -517,6 +529,7 @@ export function createPaymentService(deps: {
                     tienThue: l.tienThue,
                     tienCoc: l.tienCoc,
                     donGia: l.tienThue,
+                    giaNiemYetChot: l.giaNiemYet ?? giaHienTai.get(l.productSlug),
                     diaChiNhan: snap.diaChiNhan,
                   })),
                 },
@@ -533,7 +546,7 @@ export function createPaymentService(deps: {
             soTienHoan = hetHang.reduce((sum, l) => sum + l.tienCoc, 0);
             await hoanVi(
               soTienHoan,
-              `Hoàn cọc ${hetHang.map((l) => l.productName).join(", ")} — đã có khách khác thanh toán trước (BRU-07)`,
+              `Hoàn cọc ${hetHang.map((l) => l.productName).join(", ")} — đã có khách khác thanh toán trước hoặc sản phẩm không còn kinh doanh (BRU-07)`,
             );
           }
 

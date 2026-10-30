@@ -4,7 +4,9 @@ import { authService, sessionStore } from "@/lib/auth/server";
 import { getSessionEmail } from "@/lib/auth/request";
 import { homNayVN } from "@/lib/cart/paginate";
 import { selectionStore } from "@/lib/cart/selection";
-import { getProductBySlug, tinhTienThueNgay } from "@/lib/products";
+import { coHopDeThue } from "@/lib/cart/inventory";
+import { tinhTienThueNgay } from "@/lib/products";
+import { catalog } from "@/lib/catalog/server";
 import { uocTinhKhoangCachKm, tinhPhiShip, tinhTienCocSanPham } from "@/lib/rentals/deposit";
 
 function soNgay(startDate: string, endDate: string): number {
@@ -37,25 +39,34 @@ export async function POST(request: Request) {
   // khoảng ngày ngay trước khi tạo đơn — giỏ hàng có thể đã nằm một thời
   // gian từ lúc thêm (FR-CT-01) đến lúc xác nhận (bước này), trong lúc đó
   // một đơn khác có thể đã chiếm cùng khoảng ngày.
+  // FR-ADM-03: giá và tên lấy từ danh mục hiện tại (Admin có thể vừa đổi giá hoặc xoá sản phẩm sau khi khách thêm vào giỏ).
+  const products = await catalog.getMany(cartLines.map((l) => l.productSlug));
   const today = homNayVN();
+  const coHop = await coHopDeThue(cartLines.map((l) => l.productSlug));
   for (const line of cartLines) {
     // FR-CT-01: dòng chỉ hợp lệ với sản phẩm còn bán và khoảng ngày chưa qua — màn giỏ đã
     // đánh dấu "cần xử lý" các dòng này; chặn ở đây để không tính cọc "ma" (giá 0) hay đặt thuê quá khứ.
-    if (!getProductBySlug(line.productSlug)) {
+    if (!products.has(line.productSlug)) {
       return Response.json(
         { error: `Sản phẩm ${line.productSlug} không còn kinh doanh, vui lòng xoá khỏi giỏ thuê.` },
         { status: 409 },
       );
     }
+    if (!coHop.has(line.productSlug)) {
+      return Response.json(
+        { error: `${products.get(line.productSlug)!.ten} hiện chưa có hộp game để cho thuê, vui lòng xoá khỏi giỏ thuê.` },
+        { status: 409 },
+      );
+    }
     if (line.startDate < today) {
       return Response.json(
-        { error: `${getProductBySlug(line.productSlug)!.ten} có ngày bắt đầu đã qua, vui lòng sửa lại ngày thuê.` },
+        { error: `${products.get(line.productSlug)!.ten} có ngày bắt đầu đã qua, vui lòng sửa lại ngày thuê.` },
         { status: 409 },
       );
     }
     const conflict = (await rentalOrderStore.listActiveDateRangesForProduct(line.productSlug)).some((r) => line.startDate <= r.endDate && r.startDate <= line.endDate);
     if (conflict) {
-      const product = getProductBySlug(line.productSlug);
+      const product = products.get(line.productSlug);
       return Response.json(
         {
           error: `${product?.ten ?? line.productSlug} đã có đơn thuê khác còn hiệu lực trùng ngày trong khoảng đã chọn, vui lòng sửa lại giỏ thuê.`,
@@ -78,13 +89,15 @@ export async function POST(request: Request) {
   const { doiTac } = tinhPhiShip(khoangCachKm);
 
   const lines = cartLines.map((line) => {
-    const product = getProductBySlug(line.productSlug);
-    const giaNiemYet = product?.giaNiemYet ?? 0;
+    const product = products.get(line.productSlug)!;
+    const giaNiemYet = product.giaNiemYet;
     const soNgayThue = soNgay(line.startDate, line.endDate);
     return {
       cartLineId: line.id,
       productSlug: line.productSlug,
-      productName: product?.ten ?? line.productSlug,
+      productName: product.ten,
+      // Giá niêm yết tại thời điểm chốt giỏ: đơn được tạo sau (webhook) vẫn ghi đúng giá này dù Admin đổi giá giữa chừng.
+      giaNiemYet,
       startDate: line.startDate,
       endDate: line.endDate,
       tienThue: tinhTienThueNgay(giaNiemYet, soNgayThue),

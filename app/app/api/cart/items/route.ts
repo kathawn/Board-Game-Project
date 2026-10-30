@@ -3,7 +3,7 @@ import { sessionStore } from "@/lib/auth/server";
 import { cartStore, serializeCart } from "@/lib/cart/server";
 import { selectionStore } from "@/lib/cart/selection";
 import { kiemTraTonKho } from "@/lib/cart/inventory";
-import { getProductBySlug } from "@/lib/products";
+import { catalog } from "@/lib/catalog/server";
 
 /** FR-BH-08: thêm sản phẩm (hoặc tăng số lượng nếu đã có) vào giỏ mua; số lượng không vượt quá tồn kho Available. */
 export async function POST(request: Request) {
@@ -13,7 +13,7 @@ export async function POST(request: Request) {
   }
 
   const { sanPhamId, soLuong } = await request.json();
-  const product = getProductBySlug(sanPhamId);
+  const product = await catalog.get(sanPhamId);
   if (!product) {
     return Response.json({ error: "Không tìm thấy sản phẩm." }, { status: 404 });
   }
@@ -30,5 +30,5 @@ export async function POST(request: Request) {
   // Sản phẩm vừa được thêm vào giỏ luôn ở trạng thái đã chọn, kể cả khi trước đó từng bị bỏ chọn rồi xoá.
   if (!existing) selectionStore.set(email, "mua", [sanPhamId], true);
 
-  return Response.json({ items: serializeCart(email) }, { status: 200 });
+  return Response.json({ items: await serializeCart(email) }, { status: 200 });
 }

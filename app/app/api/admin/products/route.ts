@@ -1,18 +1,37 @@
-import { queryProducts, saveProduct, allCategories, type AdminProduct } from "@/lib/admin/mock-products";
+import { requireStaff } from "@/lib/auth/staff";
+import { adminProducts } from "@/lib/admin/products";
+import { validateProductInput } from "@/lib/admin/validate";
 
-// MOCKUP UC-15: dữ liệu giả trong bộ nhớ, chưa kiểm tra phiên Admin. Bản thật sẽ ghi bảng SanPham (FR-ADM-03).
+/** UC-15 (FR-ADM-03): chỉ Admin. Staff đăng nhập nội bộ nhưng không có quyền quản lý sản phẩm/giá → 403.
+ * GET  ?q=&danhMuc=&page= → một trang tóm tắt (10 dòng) + số đếm theo danh mục; tìm kiếm / lọc / phân trang ở SQL.
+ * POST { slug, ten, danhMuc, giaNiemYet, moTaNgan, soNguoiMin, soNguoiMax } → thêm sản phẩm. */
 export async function GET(request: Request) {
+  const auth = await requireStaff(request, ["Admin"]);
+  if (!auth.ok) return auth.response;
+
   const sp = new URL(request.url).searchParams;
-  const page = queryProducts({
+  const page = await adminProducts.list({
     q: sp.get("q") ?? "",
     danhMuc: sp.get("danhMuc") ?? "",
     page: Number(sp.get("page")) || 1,
   });
-  return Response.json({ ...page, categories: allCategories() });
+  return Response.json({ ok: true, ...page });
 }
 
 export async function POST(request: Request) {
-  const body = (await request.json()) as AdminProduct;
-  const result = saveProduct({ ...body, soHopSan: 0, soHopTong: 0, soDonLienQuan: 0 }, true);
-  return result.ok ? Response.json({ ok: true }, { status: 201 }) : Response.json(result, { status: 409 });
+  const auth = await requireStaff(request, ["Admin"]);
+  if (!auth.ok) return auth.response;
+
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return Response.json({ error: "Body không phải JSON hợp lệ." }, { status: 400 });
+  }
+  const parsed = validateProductInput(body);
+  if (!parsed.ok) return Response.json({ error: parsed.error }, { status: 400 });
+
+  const result = await adminProducts.create(parsed.value);
+  if (!result.ok) return Response.json({ error: result.error }, { status: result.status });
+  return Response.json({ ok: true }, { status: 201 });
 }

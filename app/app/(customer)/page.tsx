@@ -5,7 +5,9 @@ import { Footer } from "@/components/layout/Footer";
 import { ProductCard } from "@/components/ProductCard";
 import { ContactForm } from "@/components/ContactForm";
 import { Reveal } from "@/components/Reveal";
-import { PRODUCTS, formatVND } from "@/lib/products";
+import { Suspense } from "react";
+import { formatVND } from "@/lib/products";
+import { catalog } from "@/lib/catalog/server";
 
 const OCCASIONS = [
   { icon: Users2, label: "Gia đình chủ nhật" },
@@ -16,9 +18,20 @@ const OCCASIONS = [
   { icon: Gift, label: "Quà tặng" },
 ];
 
-const FEATURED = PRODUCTS[0]; // Cờ Tỷ Phú — sản phẩm mở đầu cho khối "nổi bật"
-
+// Danh mục đọc từ bảng SanPham (FR-ADM-03) nên là dữ liệu runtime → bọc trong Suspense (cacheComponents).
 export default function CustomerHome() {
+  return (
+    <Suspense fallback={null}>
+      <HomeContent />
+    </Suspense>
+  );
+}
+
+async function HomeContent() {
+  const PRODUCTS = await catalog.list();
+  const FEATURED = PRODUCTS.find((p) => p.slug === "co-ty-phu") ?? PRODUCTS[0]; // Cờ Tỷ Phú — sản phẩm mở đầu cho khối "nổi bật"
+  if (!FEATURED) return null;
+
   return (
     <>
       <Header />

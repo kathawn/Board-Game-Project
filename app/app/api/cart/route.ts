@@ -9,5 +9,5 @@ export async function GET(request: Request) {
     return Response.json({ error: "Vui lòng đăng nhập." }, { status: 401 });
   }
 
-  return Response.json({ items: serializeCart(email) }, { status: 200 });
+  return Response.json({ items: await serializeCart(email) }, { status: 200 });
 }

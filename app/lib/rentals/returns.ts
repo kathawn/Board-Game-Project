@@ -118,6 +118,8 @@ export interface InspectInput {
   chiTietDonId: string;
   items: { linhKienId: string; ketQua: KetQuaKiemDem; soLuongLoi?: number }[];
   ghiChuNgoai?: string;
+  /** UC-13: nhân viên (Staff hoặc Admin) đang đăng nhập và lập biên bản — ghi vào BienBanKiemDem.nhanVienId để truy vết. */
+  nhanVienId?: string;
 }
 
 export interface SettleOutcome {
@@ -242,7 +244,8 @@ function toLineView(row: LineRow): ReturnLineView {
     chiTietDonId: row.id,
     sanPhamId: row.sanPhamId,
     tenSanPham: row.sanPham.ten,
-    giaNiemYet: Number(row.sanPham.giaNiemYet),
+    // FR-ADM-03: tiền phạt / đền bù tính theo giá niêm yết LÚC ĐẶT, không theo giá hiện tại (Admin có thể đã đổi giá).
+    giaNiemYet: Number(row.giaNiemYetChot ?? row.sanPham.giaNiemYet),
     ngayKetThuc,
     tra: tra
       ? {
@@ -479,7 +482,7 @@ export function createReturnService(deps: { getDb: () => PrismaClient; now?: () 
             throw new ReturnError(400, `Chưa đánh dấu kết quả cho: ${chuaDanhDau.map((lk) => lk.ten).join(", ")}.`);
           }
 
-          const giaNiemYet = Number(line.sanPham.giaNiemYet);
+          const giaNiemYet = Number(line.giaNiemYetChot ?? line.sanPham.giaNiemYet);
           const items: MucKiemDem[] = checklist.map((lk) => {
             const req = reqById.get(lk.id);
             const ketQua: KetQuaKiemDem = req?.ketQua ?? "Du";
@@ -513,11 +516,14 @@ export function createReturnService(deps: { getDb: () => PrismaClient; now?: () 
           const ketThuc = await doiTrangThaiHop(tx, maHop, trangThaiHop);
           if (!ketThuc.ok) throw new ReturnError(ketThuc.status, ketThuc.error);
 
-          const staff = await tx.nhanVien.findFirst({
-            where: { vaiTro: "Staff", dangHoatDong: true },
-            orderBy: { email: "asc" },
-            select: { id: true },
-          });
+          // Người lập biên bản là nhân viên đang đăng nhập; chỉ khi gọi không qua phiên (seed/test) mới rơi về Staff đầu tiên.
+          const staff = input.nhanVienId
+            ? await tx.nhanVien.findFirst({ where: { id: input.nhanVienId, dangHoatDong: true }, select: { id: true } })
+            : await tx.nhanVien.findFirst({
+                where: { vaiTro: "Staff", dangHoatDong: true },
+                orderBy: { email: "asc" },
+                select: { id: true },
+              });
           if (!staff) throw new ReturnError(409, "Chưa có tài khoản nhân viên nào để lập biên bản.");
 
           const bienBan: BienBanKiemDemJson = {

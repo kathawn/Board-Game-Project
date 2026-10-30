@@ -6,6 +6,7 @@ import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { Pager, SearchBox } from "@/components/ListControls";
 import { formatVND } from "@/lib/products";
+import { staffFetch } from "@/lib/auth/staff-client";
 import type { SaleOrderPage, SaleStage } from "@/lib/orders/sale-orders";
 import { TEN_DOI_TAC, type TrangThaiVanChuyen } from "@/lib/shipping/types";
 
@@ -44,7 +45,7 @@ export default function StaffSaleOrdersPage() {
 
   const load = useCallback(async () => {
     const params = new URLSearchParams({ q: qApplied, stage, page: String(page) });
-    const response = await fetch(`/api/staff/sale-orders?${params}`);
+    const response = await staffFetch(`/api/staff/sale-orders?${params}`);
     const result: SaleOrderPage = await response.json();
     setData(result);
     setSelectedId((cur) => (cur && result.orders.some((o) => o.id === cur) ? cur : (result.orders[0]?.id ?? null)));
@@ -69,7 +70,7 @@ export default function StaffSaleOrdersPage() {
     setError((p) => ({ ...p, [id]: "" }));
     setBusy(id);
     try {
-      const response = await fetch(`/api/staff/sale-orders/${id}/handover`, { method: "POST" });
+      const response = await staffFetch(`/api/staff/sale-orders/${id}/handover`, { method: "POST" });
       const result = await response.json();
       if (!response.ok) {
         setError((p) => ({ ...p, [id]: result.error ?? "Đã có lỗi xảy ra." }));

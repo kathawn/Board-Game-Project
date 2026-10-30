@@ -83,7 +83,7 @@ export async function seedReturnsDemo(prisma: PrismaClient): Promise<void> {
     const dong = await prisma.chiTietDonHang.create({
       data: {
         donHangId: don.id, sanPhamId: sp.id, soLuong: 1, ngayBatDau: d(demo.start), ngayKetThuc: d(demo.end),
-        tienThue: 0, tienCoc: coc, donGia: 0, diaChiNhan: demo.diaChi, diaChiTra: demo.diaChi, maHop: hop.maHop,
+        tienThue: 0, tienCoc: coc, donGia: 0, giaNiemYetChot: gia, diaChiNhan: demo.diaChi, diaChiTra: demo.diaChi, maHop: hop.maHop,
       },
     });
     await prisma.datCoc.create({

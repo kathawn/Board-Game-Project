@@ -2,7 +2,7 @@ import { getSessionEmail } from "@/lib/auth/request";
 import { sessionStore } from "@/lib/auth/server";
 import { cartStore, serializeCart } from "@/lib/cart/server";
 import { kiemTraTonKho } from "@/lib/cart/inventory";
-import { getProductBySlug } from "@/lib/products";
+import { catalog } from "@/lib/catalog/server";
 
 /** FR-BH-09: sửa số lượng một sản phẩm trong giỏ trước khi thanh toán. */
 export async function PATCH(
@@ -17,7 +17,7 @@ export async function PATCH(
   const { sanPhamId } = await params;
   const { soLuong } = await request.json();
 
-  const product = getProductBySlug(sanPhamId);
+  const product = await catalog.get(sanPhamId);
   if (!product) {
     return Response.json({ error: "Không tìm thấy sản phẩm." }, { status: 404 });
   }
@@ -29,7 +29,7 @@ export async function PATCH(
 
   cartStore.setItem(email, sanPhamId, soLuong);
 
-  return Response.json({ items: serializeCart(email) }, { status: 200 });
+  return Response.json({ items: await serializeCart(email) }, { status: 200 });
 }
 
 /** FR-BH-09: xoá một sản phẩm khỏi giỏ trước khi thanh toán. */
@@ -45,5 +45,5 @@ export async function DELETE(
   const { sanPhamId } = await params;
   cartStore.removeItem(email, sanPhamId);
 
-  return Response.json({ items: serializeCart(email) }, { status: 200 });
+  return Response.json({ items: await serializeCart(email) }, { status: 200 });
 }

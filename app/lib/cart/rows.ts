@@ -4,7 +4,8 @@ import { homNayVN } from "@/lib/cart/paginate";
 import { authService } from "@/lib/auth/server";
 import { rentalCartStore, rentalOrderStore } from "@/lib/rentals/server";
 import { demHopAvailable } from "@/lib/cart/inventory";
-import { getProductBySlug, tinhTienThueNgay } from "@/lib/products";
+import { tinhTienThueNgay } from "@/lib/products";
+import { catalog } from "@/lib/catalog/server";
 import { uocTinhKhoangCachKm, tinhPhiShip, tinhTienCocSanPham } from "@/lib/rentals/deposit";
 
 /** Dựng toàn bộ dòng giỏ (kèm trạng thái "cần xử lý" và cờ đã chọn) — dùng chung cho API danh sách,
@@ -31,8 +32,10 @@ export interface DongMua {
 export async function dungDongMua(email: string): Promise<DongMua[]> {
   const items = cartStore.get(email);
   const ton = await demHopAvailable(items.map((i) => i.sanPhamId));
+  // FR-ADM-03: đơn giá lấy từ danh mục hiện tại (bảng SanPham) nên Admin đổi giá là giỏ mua + checkout thấy ngay.
+  const products = await catalog.getMany(items.map((i) => i.sanPhamId));
   return items.map((item, index) => {
-    const product = getProductBySlug(item.sanPhamId);
+    const product = products.get(item.sanPhamId);
     const conLai = ton.get(item.sanPhamId) ?? 0;
     const trangThai: TrangThaiMua = !product
       ? "ngung"
@@ -92,9 +95,11 @@ export async function dungDongThue(email: string) {
     return cache.get(slug)!;
   };
 
+  const cartLines = await rentalCartStore.list(email);
+  const products = await catalog.getMany(cartLines.map((l) => l.productSlug));
   const rows: DongThue[] = await Promise.all(
-    (await rentalCartStore.list(email)).map(async (line, index) => {
-      const product = getProductBySlug(line.productSlug);
+    cartLines.map(async (line, index) => {
+      const product = products.get(line.productSlug);
       const soNgayThue = soNgay(line.startDate, line.endDate);
       let canXuLy: CanXuLyThue = null;
       if (!product) canXuLy = "ngung";

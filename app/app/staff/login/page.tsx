@@ -6,8 +6,8 @@ import { Eye, EyeOff, Lock, Mail, ShieldCheck } from "lucide-react";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 
-/** MOCKUP SCR-08 / UC-13 (FR-ADM-01): đăng nhập nội bộ Staff/Admin, tách khỏi /login của khách.
- * Submit hiện chỉ mô phỏng kết quả; sau Gate 1 sẽ gọi POST /api/staff/login (bảng NhanVien). */
+/** SCR-08 / UC-13 (FR-ADM-01): đăng nhập nội bộ Staff/Admin, tách khỏi /login của khách. Gọi POST /api/staff/login
+ * (xác thực theo bảng NhanVien, cookie riêng) rồi chuyển Admin về trang quản lý sản phẩm, Staff về trang đơn thuê. */
 export default function StaffLoginPage() {
   const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
@@ -16,23 +16,27 @@ export default function StaffLoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setSubmitting(true);
-    setTimeout(() => {
+    try {
+      const response = await fetch("/api/staff/login", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        setError(data.error ?? "Đã có lỗi xảy ra, vui lòng thử lại.");
+        return;
+      }
+      router.push(data.vaiTro === "Admin" ? "/admin/products" : "/staff/rental-orders");
+    } catch {
+      setError("Không kết nối được máy chủ, vui lòng thử lại.");
+    } finally {
       setSubmitting(false);
-      const lower = email.trim().toLowerCase();
-      if (lower.startsWith("khach")) {
-        setError("Email hoặc mật khẩu không đúng."); // không tiết lộ tài khoản khách tồn tại
-        return;
-      }
-      if (lower.startsWith("khoa")) {
-        setError("Tài khoản đã bị khoá. Vui lòng liên hệ Admin.");
-        return;
-      }
-      router.push(lower.startsWith("admin") ? "/admin/products" : "/staff/rental-orders");
-    }, 400);
+    }
   };
 
   return (
@@ -99,10 +103,6 @@ export default function StaffLoginPage() {
             </button>
           </form>
 
-          <p className="mt-6 rounded border border-dashed border-ink/20 p-3 text-center text-[11px] leading-relaxed text-ink-soft">
-            Mockup: email bắt đầu bằng <b>admin</b> → vào trang Admin · <b>staff</b> → trang Staff ·{" "}
-            <b>khach</b> → báo sai thông tin · <b>khoa</b> → báo tài khoản bị khoá.
-          </p>
         </div>
       </main>
 

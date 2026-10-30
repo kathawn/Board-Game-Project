@@ -1,17 +1,22 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { AlertTriangle, ChevronLeft, ChevronRight, Info, LogOut, Plus, Search, Trash2 } from "lucide-react";
+import Image from "next/image";
+import { useRouter } from "next/navigation";
+import { AlertTriangle, ChevronLeft, ChevronRight, ImagePlus, Info, LogOut, Plus, Search, Trash2 } from "lucide-react";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { formatVND } from "@/lib/products";
-import type { AdminProduct, ProductPage } from "@/lib/admin/mock-products";
+import type { AdminProduct, AdminProductInput, AdminProductPage } from "@/lib/admin/types";
 
-/** MOCKUP SCR-UC-15 (FR-ADM-03, BR-12): Admin thêm / sửa / xoá sản phẩm và cập nhật giá niêm yết (giá bán;
- * giá thuê suy ra theo BRU-02 từ giá niêm yết nên không nhập riêng). Danh sách tìm kiếm / lọc / phân trang ở
- * server; chi tiết chỉ tải cho sản phẩm đang chọn. Chưa có kiểm tra phiên Admin — sẽ có sau Gate 1. */
+/** UC-15 (FR-ADM-03, BR-12): Admin thêm / sửa / xoá sản phẩm và cập nhật giá niêm yết (giá bán; giá thuê suy ra theo
+ * BRU-02 từ giá niêm yết nên không nhập riêng). Danh sách tìm kiếm / lọc / phân trang ở server; chi tiết chỉ tải cho
+ * sản phẩm đang chọn. Chỉ tài khoản Admin (UC-13) gọi được API; chưa đăng nhập → về /staff/login, là Staff → báo không đủ quyền. */
 
-type ListData = ProductPage & { categories: string[] };
+type ListData = AdminProductPage;
+
+/** Form giữ thêm các trường chỉ đọc để hiển thị số liệu; khi gửi lên chỉ lấy AdminProductInput. */
+type FormState = AdminProduct;
 
 const card = "rounded bg-paper shadow-[0_20px_40px_-20px_rgba(42,31,26,0.2)]";
 const btnPrimary =
@@ -21,7 +26,7 @@ const btnGhost =
 const inputCls =
   "w-full rounded border border-ink/18 bg-cream px-3.5 py-2.5 text-sm text-ink focus:border-wine focus:outline-none";
 
-const EMPTY: AdminProduct = {
+const EMPTY: FormState = {
   slug: "",
   ten: "",
   danhMuc: "",
@@ -29,10 +34,11 @@ const EMPTY: AdminProduct = {
   moTaNgan: "",
   soNguoiMin: 2,
   soNguoiMax: 4,
-  linhKien: [],
   soHopSan: 0,
   soHopTong: 0,
   soDonLienQuan: 0,
+  soLinhKien: 0,
+  anh: null,
 };
 
 const giaThueNgayDau = (gia: number) => Math.round(gia * 0.1);
@@ -75,6 +81,9 @@ function Chip({
 }
 
 export default function AdminProductsPage() {
+  const router = useRouter();
+  const [me, setMe] = useState<{ email: string; vaiTro: string } | null>(null);
+  const [forbidden, setForbidden] = useState(false);
   const [q, setQ] = useState("");
   const [qApplied, setQApplied] = useState("");
   const [danhMuc, setDanhMuc] = useState("");
@@ -83,20 +92,51 @@ export default function AdminProductsPage() {
 
   // selected: slug đang xem/sửa; "new" = đang thêm mới.
   const [selected, setSelected] = useState<string | "new" | null>(null);
-  const [form, setForm] = useState<AdminProduct | null>(null);
+  const [form, setForm] = useState<FormState | null>(null);
   const [oldPrice, setOldPrice] = useState<number | null>(null);
+  // Thông báo giá đã đổi (từ → sang) ở lại sau khi lưu để Admin còn đọc được; reset khi chọn sản phẩm khác.
+  const [priceNotice, setPriceNotice] = useState<{ tu: number; sang: number } | null>(null);
+  const [anhFile, setAnhFile] = useState<File | null>(null);
+  const [anhPreview, setAnhPreview] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  /** Mọi lời gọi API Admin đi qua đây: 401 (chưa đăng nhập nội bộ / phiên hết hạn) → về trang đăng nhập nội bộ;
+   * 403 (là Staff, không phải Admin) → hiện thông báo không đủ quyền. */
+  const api = useCallback(
+    async (url: string, init?: RequestInit): Promise<Response | null> => {
+      const res = await fetch(url, init);
+      if (res.status === 401) {
+        router.push("/staff/login");
+        return null;
+      }
+      if (res.status === 403) {
+        setForbidden(true);
+        return null;
+      }
+      return res;
+    },
+    [router],
+  );
+
+  useEffect(() => {
+    (async () => {
+      const res = await fetch("/api/staff/me");
+      if (res.status === 401) router.push("/staff/login");
+      else if (res.ok) setMe(await res.json());
+    })();
+  }, [router]);
+
   const loadList = useCallback(async () => {
     const params = new URLSearchParams({ q: qApplied, danhMuc, page: String(page) });
-    const res = await fetch(`/api/admin/products?${params}`);
+    const res = await api(`/api/admin/products?${params}`);
+    if (!res) return;
     const data: ListData = await res.json();
     setList(data);
     setSelected((cur) => cur ?? data.items[0]?.slug ?? null);
-  }, [qApplied, danhMuc, page]);
+  }, [qApplied, danhMuc, page, api]);
 
   useEffect(() => {
     (async () => {
@@ -108,12 +148,15 @@ export default function AdminProductsPage() {
     (async () => {
       setConfirmDelete(false);
       setMessage(null);
+      setPriceNotice(null);
+      setAnhFile(null);
+      setAnhPreview(null);
       if (selected === "new") {
         setForm({ ...EMPTY });
         setOldPrice(null);
       } else if (selected) {
-        const res = await fetch(`/api/admin/products/${selected}`);
-        if (res.ok) {
+        const res = await api(`/api/admin/products/${selected}`);
+        if (res?.ok) {
           const { product }: { product: AdminProduct } = await res.json();
           setForm(product);
           setOldPrice(product.giaNiemYet);
@@ -124,7 +167,7 @@ export default function AdminProductsPage() {
         setForm(null);
       }
     })();
-  }, [selected]);
+  }, [selected, api]);
 
   const onSearch = (v: string) => {
     setQ(v);
@@ -135,7 +178,7 @@ export default function AdminProductsPage() {
     }, 300);
   };
 
-  const patch = (p: Partial<AdminProduct>) => setForm((f) => (f ? { ...f, ...p } : f));
+  const patch = (p: Partial<FormState>) => setForm((f) => (f ? { ...f, ...p } : f));
 
   const valid =
     form &&
@@ -152,18 +195,52 @@ export default function AdminProductsPage() {
     setMessage(null);
     try {
       const isNew = selected === "new";
-      const res = await fetch(isNew ? "/api/admin/products" : `/api/admin/products/${form.slug}`, {
+      const input: AdminProductInput = {
+        slug: form.slug,
+        ten: form.ten,
+        danhMuc: form.danhMuc,
+        giaNiemYet: form.giaNiemYet,
+        moTaNgan: form.moTaNgan,
+        soNguoiMin: form.soNguoiMin,
+        soNguoiMax: form.soNguoiMax,
+      };
+      const res = await api(isNew ? "/api/admin/products" : `/api/admin/products/${form.slug}`, {
         method: isNew ? "POST" : "PUT",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify(input),
       });
+      if (!res) return;
       const data = await res.json();
       if (!res.ok) {
         setMessage({ kind: "err", text: data.error ?? "Đã có lỗi xảy ra." });
         return;
       }
-      setMessage({ kind: "ok", text: isNew ? "Đã thêm sản phẩm." : "Đã lưu thay đổi." });
+      // Tải ảnh (nếu Admin đã chọn file) sau khi sản phẩm đã có trong DB.
+      let loiAnh: string | null = null;
+      let anhMoi: string | null = null;
+      if (anhFile) {
+        const fd = new FormData();
+        fd.append("file", anhFile);
+        const up = await api(`/api/admin/products/${form.slug}/image`, { method: "POST", body: fd });
+        if (!up) return;
+        const upData = await up.json();
+        if (up.ok) anhMoi = upData.anh;
+        else loiAnh = upData.error ?? "Không tải được ảnh.";
+      }
+
+      // Câu giải thích giá phải ở lại SAU khi lưu (trước đây biến mất ngay vì giá cũ bị ghi đè).
+      if (!isNew && oldPrice !== null && oldPrice !== form.giaNiemYet) {
+        setPriceNotice({ tu: oldPrice, sang: form.giaNiemYet });
+      }
       setOldPrice(form.giaNiemYet);
+      setAnhFile(null);
+      setAnhPreview(null);
+      if (anhMoi) patch({ anh: anhMoi });
+      setMessage(
+        loiAnh
+          ? { kind: "err", text: `${isNew ? "Đã thêm sản phẩm" : "Đã lưu thay đổi"} nhưng chưa tải được ảnh: ${loiAnh}` }
+          : { kind: "ok", text: isNew ? "Đã thêm sản phẩm." : "Đã lưu thay đổi." },
+      );
       if (isNew) setSelected(form.slug);
       await loadList();
     } finally {
@@ -175,7 +252,8 @@ export default function AdminProductsPage() {
     if (!form) return;
     setBusy(true);
     try {
-      const res = await fetch(`/api/admin/products/${form.slug}`, { method: "DELETE" });
+      const res = await api(`/api/admin/products/${form.slug}`, { method: "DELETE" });
+      if (!res) return;
       const data = await res.json();
       if (!res.ok) {
         setMessage({ kind: "err", text: data.error });
@@ -191,6 +269,41 @@ export default function AdminProductsPage() {
   };
 
   const priceChanged = form && oldPrice !== null && form.giaNiemYet !== oldPrice;
+
+  const onPickImage = (file: File | null) => {
+    setAnhFile(file);
+    setAnhPreview((cu) => {
+      if (cu) URL.revokeObjectURL(cu);
+      return file ? URL.createObjectURL(file) : null;
+    });
+  };
+
+  const handleLogout = async () => {
+    await fetch("/api/staff/logout", { method: "POST" });
+    router.push("/staff/login");
+  };
+
+  // Staff đăng nhập hợp lệ nhưng không phải Admin (FR-ADM-01, BR-11): chặn hẳn màn hình, không hiện giao diện rỗng.
+  if (forbidden) {
+    return (
+      <>
+        <Header />
+        <main className="flex min-h-screen items-center justify-center bg-cream px-5 pt-32">
+          <div className={`${card} max-w-[420px] p-8 text-center`}>
+            <AlertTriangle className="mx-auto mb-3 h-6 w-6 text-destructive" />
+            <h1 className="mb-2 font-heading text-xl text-ink">Không đủ quyền truy cập</h1>
+            <p className="mb-5 text-sm text-ink-soft">
+              Chỉ tài khoản Admin mới được quản lý sản phẩm và giá. Vui lòng đăng nhập bằng tài khoản Admin.
+            </p>
+            <button type="button" onClick={handleLogout} className={btnPrimary}>
+              Đăng nhập tài khoản khác
+            </button>
+          </div>
+        </main>
+        <Footer />
+      </>
+    );
+  }
 
   return (
     <>
@@ -209,10 +322,14 @@ export default function AdminProductsPage() {
               </p>
             </div>
             <div className="flex items-center gap-3">
-              <span className="text-xs text-ink-soft">admin@boardverse.local</span>
-              <a href="/staff/login" className="flex items-center gap-1.5 text-xs font-semibold text-wine hover:underline">
+              <span className="text-xs text-ink-soft">{me?.email ?? ""}</span>
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="flex items-center gap-1.5 text-xs font-semibold text-wine hover:underline"
+              >
                 <LogOut className="h-3.5 w-3.5" /> Đăng xuất
-              </a>
+              </button>
             </div>
           </div>
 
@@ -412,6 +529,40 @@ export default function AdminProductsPage() {
                         onChange={(e) => patch({ soNguoiMax: Number(e.target.value) })}
                       />
                     </label>
+                    <div className="sm:col-span-2">
+                      <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-ink-soft">
+                        Ảnh sản phẩm (JPG / PNG / WebP, tối đa 2MB)
+                      </span>
+                      <div className="flex items-center gap-4">
+                        <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded border border-ink/12 bg-cream">
+                          {(anhPreview ?? form.anh) ? (
+                            <Image
+                              src={(anhPreview ?? form.anh)!}
+                              alt={form.ten || "Ảnh sản phẩm"}
+                              fill
+                              unoptimized
+                              className="object-cover"
+                              sizes="80px"
+                            />
+                          ) : (
+                            <ImagePlus className="absolute left-1/2 top-1/2 h-6 w-6 -translate-x-1/2 -translate-y-1/2 text-ink-soft/60" />
+                          )}
+                        </div>
+                        <label className={`${btnGhost} cursor-pointer`}>
+                          <ImagePlus className="h-4 w-4" />
+                          {anhFile ? "Chọn ảnh khác" : form.anh ? "Đổi ảnh" : "Chọn ảnh"}
+                          <input
+                            type="file"
+                            accept="image/jpeg,image/png,image/webp"
+                            className="sr-only"
+                            onChange={(e) => onPickImage(e.target.files?.[0] ?? null)}
+                          />
+                        </label>
+                        <span className="min-w-0 truncate text-xs text-ink-soft">
+                          {anhFile ? `${anhFile.name} — sẽ tải lên khi bấm Lưu` : form.anh ? "" : "Chưa có ảnh (đang dùng ảnh mặc định)"}
+                        </span>
+                      </div>
+                    </div>
                     <label className="sm:col-span-2">
                       <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-ink-soft">
                         Mô tả ngắn
@@ -427,12 +578,20 @@ export default function AdminProductsPage() {
 
                   {/* Vùng thông báo cố định chiều cao: không đẩy các nút khi xuất hiện. */}
                   <div className="mt-4 min-h-[64px] space-y-2 text-xs">
-                    {priceChanged && (
+                    {priceChanged ? (
                       <p className="flex items-start gap-2 rounded bg-gold/10 p-2.5 text-ink">
                         <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-gold" />
-                        Giá đổi từ {formatVND(oldPrice!)} → {formatVND(form.giaNiemYet)}. Áp dụng ngay cho đơn tạo mới;
-                        đơn đã xác nhận trước đó giữ nguyên giá cũ.
+                        Giá đổi từ {formatVND(oldPrice!)} → {formatVND(form.giaNiemYet)}. Khi lưu, giá mới áp dụng ngay
+                        cho đơn tạo mới; đơn đã tạo trước đó giữ nguyên giá cũ.
                       </p>
+                    ) : (
+                      priceNotice && (
+                        <p className="flex items-start gap-2 rounded bg-gold/10 p-2.5 text-ink">
+                          <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-gold" />
+                          Đã đổi giá từ {formatVND(priceNotice.tu)} → {formatVND(priceNotice.sang)}. Giá mới áp dụng ngay
+                          cho đơn tạo mới; đơn đã tạo trước đó giữ nguyên giá cũ.
+                        </p>
+                      )
                     )}
                     {message && (
                       <p className={`font-medium ${message.kind === "ok" ? "text-forest" : "text-destructive"}`}>
@@ -485,7 +644,7 @@ export default function AdminProductsPage() {
                       </div>
                       <div>
                         <dt>Linh kiện (checklist)</dt>
-                        <dd className="mt-1 text-lg font-semibold tabular-nums text-ink">{form.linhKien.length}</dd>
+                        <dd className="mt-1 text-lg font-semibold tabular-nums text-ink">{form.soLinhKien}</dd>
                       </div>
                     </dl>
                   )}

@@ -1,3 +1,4 @@
+import { requireStaff } from "@/lib/auth/staff";
 import type { Prisma } from "@/lib/generated/prisma/client";
 import { getPrisma } from "@/lib/db/client";
 import {
@@ -13,6 +14,8 @@ import {
  *      (trangThai = "canxuly" gộp Checking + Damaged, "all", hoặc một trạng thái) và phân trang, kèm số hộp theo trạng thái.
  * POST { maHop, trangThai } → đổi trạng thái; cung không hợp lệ trả 409. */
 export async function GET(request: Request) {
+  const auth = await requireStaff(request);
+  if (!auth.ok) return auth.response;
   const url = new URL(request.url);
   const q = (url.searchParams.get("q") ?? "").trim();
   const loc = url.searchParams.get("trangThai") ?? "canxuly";
@@ -66,6 +69,8 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const auth = await requireStaff(request);
+  if (!auth.ok) return auth.response;
   let body: Record<string, unknown>;
   try {
     body = await request.json();

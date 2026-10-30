@@ -1,3 +1,4 @@
+import { requireStaff } from "@/lib/auth/staff";
 import { rentalOrderStore } from "@/lib/rentals/server";
 
 /** FR-CT-05 (UC-05): Staff xác nhận đơn thuê — chuyển Pending → Confirmed.
@@ -6,6 +7,8 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const auth = await requireStaff(request);
+  if (!auth.ok) return auth.response;
   const { id } = await params;
   const result = await rentalOrderStore.confirm(id);
 

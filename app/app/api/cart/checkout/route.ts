@@ -4,7 +4,7 @@ import { paymentService } from "@/lib/payments/server";
 import { dungDongMua } from "@/lib/cart/rows";
 import { demHopAvailable } from "@/lib/cart/inventory";
 import { uocTinhKhoangCachKm, tinhPhiShip } from "@/lib/rentals/deposit";
-import { getProductBySlug } from "@/lib/products";
+import { catalog } from "@/lib/catalog/server";
 
 /** UC-03 (FR-BH-04, FR-BH-09, FR-TTGV-02, UC-10): khách xác nhận các dòng giỏ mua ĐÃ CHỌN để thanh toán qua
  * mã QR. Hệ thống kiểm tra còn hàng thật (số hộp Available) cho từng dòng, tính tiền hàng + phí ship một chiều
@@ -27,8 +27,9 @@ export async function POST(request: Request) {
 
   // FR-BH-04: từ chối checkout kèm thông báo rõ ràng nếu sản phẩm hết hàng / không đủ số lượng.
   const ton = await demHopAvailable(chon.map((r) => r.sanPhamId));
+  const products = await catalog.getMany(chon.map((r) => r.sanPhamId));
   for (const r of chon) {
-    const product = getProductBySlug(r.sanPhamId);
+    const product = products.get(r.sanPhamId);
     if (!product) {
       return Response.json(
         { error: `Sản phẩm ${r.sanPhamId} không còn kinh doanh, vui lòng xoá khỏi giỏ mua hoặc bỏ chọn.` },

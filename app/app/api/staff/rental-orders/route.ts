@@ -1,3 +1,4 @@
+import { requireStaff } from "@/lib/auth/staff";
 import { rentalOrderStore } from "@/lib/rentals/server";
 import { RENTAL_STAGES, type RentalStage } from "@/lib/rentals/order-store";
 
@@ -6,6 +7,8 @@ import { RENTAL_STAGES, type RentalStage } from "@/lib/rentals/order-store";
  * kiểm tra phiên ở bước backend UC-13.
  * Query: q, stage (ChoXacNhan | ChoBanGiao | DangThue), page, pageSize. */
 export async function GET(request: Request) {
+  const auth = await requireStaff(request);
+  if (!auth.ok) return auth.response;
   const url = new URL(request.url);
   const stageParam = url.searchParams.get("stage");
   const stage: RentalStage = RENTAL_STAGES.includes(stageParam as RentalStage)

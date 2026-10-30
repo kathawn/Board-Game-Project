@@ -1,11 +1,12 @@
-import { checkStock, PRODUCTS } from "@/lib/products";
+import { checkStock } from "@/lib/products";
+import { catalog } from "@/lib/catalog/server";
 
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ slug: string }> },
 ) {
   const { slug } = await params;
-  const product = PRODUCTS.find((p) => p.slug === slug);
+  const product = await catalog.get(slug);
 
   if (!product) {
     return Response.json({ error: "Không tìm thấy sản phẩm." }, { status: 404 });

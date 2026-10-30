@@ -43,3 +43,6 @@ next-env.d.ts
 
 # Prisma client tu sinh (npx prisma generate)
 /lib/generated/prisma
+
+# anh san pham do Admin tai len (UC-15) - du lieu runtime, khong commit
+/public/images/products/

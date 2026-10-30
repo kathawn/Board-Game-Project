@@ -1,23 +1,45 @@
-import { deleteProduct, getProduct, saveProduct, type AdminProduct } from "@/lib/admin/mock-products";
+import { requireStaff } from "@/lib/auth/staff";
+import { adminProducts } from "@/lib/admin/products";
+import { validateProductInput } from "@/lib/admin/validate";
 
-// MOCKUP UC-15 — xem app/api/admin/products/route.ts.
-export async function GET(_req: Request, { params }: { params: Promise<{ slug: string }> }) {
+/** UC-15 (FR-ADM-03): chi tiết / sửa / xoá một sản phẩm — chỉ Admin. */
+export async function GET(request: Request, { params }: { params: Promise<{ slug: string }> }) {
+  const auth = await requireStaff(request, ["Admin"]);
+  if (!auth.ok) return auth.response;
+
   const { slug } = await params;
-  const product = getProduct(slug);
-  return product ? Response.json({ product }) : Response.json({ error: "Không tìm thấy sản phẩm." }, { status: 404 });
+  const product = await adminProducts.get(slug);
+  if (!product) return Response.json({ error: "Không tìm thấy sản phẩm." }, { status: 404 });
+  return Response.json({ ok: true, product });
 }
 
+/** Sửa thông tin + giá. Slug lấy từ URL, không đổi được. Giá mới áp dụng ngay cho đơn tạo sau đó (BR-12). */
 export async function PUT(request: Request, { params }: { params: Promise<{ slug: string }> }) {
+  const auth = await requireStaff(request, ["Admin"]);
+  if (!auth.ok) return auth.response;
+
   const { slug } = await params;
-  const existing = getProduct(slug);
-  if (!existing) return Response.json({ error: "Không tìm thấy sản phẩm." }, { status: 404 });
-  const body = (await request.json()) as AdminProduct;
-  saveProduct({ ...existing, ...body, slug }, false);
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return Response.json({ error: "Body không phải JSON hợp lệ." }, { status: 400 });
+  }
+  const parsed = validateProductInput({ ...(body as object), slug });
+  if (!parsed.ok) return Response.json({ error: parsed.error }, { status: 400 });
+
+  const result = await adminProducts.update(slug, parsed.value);
+  if (!result.ok) return Response.json({ error: result.error }, { status: result.status });
   return Response.json({ ok: true });
 }
 
-export async function DELETE(_req: Request, { params }: { params: Promise<{ slug: string }> }) {
+/** Xoá chỉ được khi sản phẩm chưa có dòng đơn / đánh giá nào; ngược lại 409 để bảo toàn lịch sử đơn. */
+export async function DELETE(request: Request, { params }: { params: Promise<{ slug: string }> }) {
+  const auth = await requireStaff(request, ["Admin"]);
+  if (!auth.ok) return auth.response;
+
   const { slug } = await params;
-  const result = deleteProduct(slug);
-  return result.ok ? Response.json({ ok: true }) : Response.json(result, { status: 409 });
+  const result = await adminProducts.remove(slug);
+  if (!result.ok) return Response.json({ error: result.error }, { status: result.status });
+  return Response.json({ ok: true });
 }
