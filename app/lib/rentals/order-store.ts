@@ -37,8 +37,31 @@ export interface RentalOrder {
   shipments: Shipment[];
 }
 
+/** Giai đoạn xử lý của Staff trên màn đơn thuê (mỗi giai đoạn là một tab):
+ * ChoXacNhan = Pending (UC-05), ChoBanGiao = Confirmed (UC-06), DangThue = Active + Overdue (theo dõi UC-12). */
+export const RENTAL_STAGES = ["ChoXacNhan", "ChoBanGiao", "DangThue"] as const;
+export type RentalStage = (typeof RENTAL_STAGES)[number];
+
+const STAGE_TRANG_THAI: Record<RentalStage, string[]> = {
+  ChoXacNhan: ["Pending"],
+  ChoBanGiao: ["Confirmed"],
+  DangThue: ["Active", "Overdue"],
+};
+
+export interface RentalOrderPage {
+  orders: RentalOrder[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+  /** Số đơn theo từng giai đoạn (áp dụng từ khoá tìm kiếm, không áp dụng giai đoạn) để hiện trên tab. */
+  counts: Record<RentalStage, number>;
+}
+
 export interface RentalOrderStore {
   list(): Promise<RentalOrder[]>;
+  /** Tìm kiếm (mã đơn / email khách / tên sản phẩm) + lọc giai đoạn + phân trang chạy ở SQL, không tải hết đơn về. */
+  search(opts: { q: string; stage: RentalStage; page: number; pageSize: number }): Promise<RentalOrderPage>;
   get(id: string): Promise<RentalOrder | undefined>;
   /** FR-CT-05/UC-05: Staff xác nhận đơn — chỉ hợp lệ khi đơn đang ở Pending. */
   confirm(id: string): Promise<{ ok: true; order: RentalOrder } | { ok: false; error: string }>;
@@ -93,6 +116,49 @@ export function createPrismaRentalOrderStore(getDb: () => PrismaClient): RentalO
         orderBy: { ngayTao: "desc" },
       });
       return rows.map(toRentalOrder);
+    },
+
+    async search({ q, stage, page, pageSize }) {
+      const db = getDb();
+      const keyword = q.trim();
+      const timKiem: Prisma.DonHangWhereInput = keyword
+        ? {
+            OR: [
+              { maDon: { contains: keyword } },
+              { khachHang: { email: { contains: keyword } } },
+              { chiTiet: { some: { sanPham: { ten: { contains: keyword } } } } },
+            ],
+          }
+        : {};
+      const base: Prisma.DonHangWhereInput = { loai: "Thue", ...timKiem };
+      const where: Prisma.DonHangWhereInput = { ...base, trangThai: { in: STAGE_TRANG_THAI[stage] } };
+
+      const total = await db.donHang.count({ where });
+      const totalPages = Math.max(1, Math.ceil(total / pageSize));
+      const current = Math.min(totalPages, Math.max(1, page));
+
+      const [rows, grouped] = await Promise.all([
+        db.donHang.findMany({
+          where,
+          include: includeOrder,
+          // Việc cần làm trước: đơn cũ nhất xử lý trước; ở tab đang thuê thì Overdue (quá hạn) lên đầu.
+          orderBy: stage === "DangThue" ? [{ trangThai: "desc" }, { ngayTao: "asc" }] : [{ ngayTao: "asc" }],
+          skip: (current - 1) * pageSize,
+          take: pageSize,
+        }),
+        db.donHang.groupBy({
+          by: ["trangThai"],
+          where: { ...base, trangThai: { in: Object.values(STAGE_TRANG_THAI).flat() } },
+          _count: { _all: true },
+        }),
+      ]);
+
+      const counts = { ChoXacNhan: 0, ChoBanGiao: 0, DangThue: 0 } as Record<RentalStage, number>;
+      for (const g of grouped) {
+        const s = RENTAL_STAGES.find((st) => STAGE_TRANG_THAI[st].includes(g.trangThai));
+        if (s) counts[s] += g._count._all;
+      }
+      return { orders: rows.map(toRentalOrder), total, page: current, pageSize, totalPages, counts };
     },
 
     async get(id) {
