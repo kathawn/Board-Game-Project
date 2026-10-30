@@ -84,6 +84,10 @@ model LinhKien {
   sanPham     SanPham @relation(fields: [sanPhamId], references: [id])
   tenLinhKien String
   laDocBan    Boolean @default(false)
+  // UC-08 / BRU-04: số lượng chuẩn trong bộ (checklist gốc) và giá lẻ niêm yết (NULL = nhà phân phối không
+  // bán lẻ -> đền 20% giá bộ). Độc bản luôn tính 100% giá bộ nên không dùng giaLe.
+  soLuong     Int      @default(1)
+  giaLe       Decimal? @db.Decimal(12, 0)
 
   @@index([sanPhamId])
 }
@@ -148,6 +152,9 @@ model ChiTietDonHang {
   donGia      Decimal           @db.Decimal(12, 0)
   diaChiNhan  String
   diaChiTra   String?
+  // Mã hộp game vật lý (HopGame.maHop) xuất kho cho dòng này, ghi lúc bàn giao (UC-06). Để UC-08 biết đúng hộp nào
+  // được trả về — ERD SRS không có trường này (bổ sung có chủ đích). NULL với đơn chưa bàn giao.
+  maHop       String?
   giaoVan     GiaoVan[]
   bienBan     BienBanKiemDem[]
 
@@ -164,6 +171,8 @@ model DatCoc {
   // TrangThaiCoc: Held | Refunded | Partially_Refunded
   trangThai  String    @default("Held")
   ngayHoan   DateTime? @db.Date
+  // UC-07: phiếu quyết toán hoàn cọc (JSON, lib/rentals/settlement.ts) — lưu vết cả khi hoàn 0đ (luồng thay thế 5a).
+  phieuQuyetToan String? @db.NVarChar(Max)
 }
 
 model GiaoVan {
@@ -179,6 +188,9 @@ model GiaoVan {
   maVanDon           String?        @unique(map: "uq_giaovan_mavandon")
   // TrangThaiVanChuyen: DangGiao | DaGiao | DangLay | DaLay
   trangThaiVanChuyen String
+  // FR-TTGV-05: thời điểm vận đơn tiến tới trạng thái cuối (DaGiao/DaLay). Chiều trả: chính là ngày hàng về
+  // kho, dùng tính số ngày trễ hạn (BRU-03, FR-CT-06).
+  hoanTatLuc         DateTime?
 }
 
 model ThanhToan {
@@ -227,7 +239,8 @@ model BienBanKiemDem {
   chiTietDon   ChiTietDonHang @relation(fields: [chiTietDonId], references: [id])
   nhanVienId   String         @db.UniqueIdentifier
   nhanVien     NhanVien       @relation(fields: [nhanVienId], references: [id])
-  ketQua       String
+  // JSON: danh sách linh kiện + kết quả (Du/Loi) + số lượng lỗi + đơn giá đền (lib/rentals/settlement.ts).
+  ketQua       String         @db.NVarChar(Max)
   ngayLap      DateTime       @default(now())
 
   @@index([chiTietDonId])

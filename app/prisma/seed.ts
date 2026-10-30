@@ -12,6 +12,7 @@ import { parseSqlServerUrl } from "../lib/db/connection";
 import { PrismaClient } from "../lib/generated/prisma/client";
 import { PRODUCTS, tinhTienThueNgay } from "../lib/products";
 import { tinhPhiShip, tinhTienCocSanPham, uocTinhKhoangCachKm } from "../lib/rentals/deposit";
+import { seedReturnsDemo } from "./seed-returns";
 
 const DEMO_PASSWORD = "Demo@12345";
 
@@ -93,7 +94,7 @@ async function main() {
         giaNiemYet: p.giaNiemYet,
         danhMuc: p.danhMuc,
         anhUrl: p.anh,
-        linhKien: { create: p.linhKien.map((l) => ({ tenLinhKien: l.ten, laDocBan: l.docBan })) },
+        linhKien: { create: p.linhKien.map((l) => ({ tenLinhKien: l.ten, laDocBan: l.docBan, soLuong: l.soLuong ?? 1, giaLe: l.giaLe ?? null })) },
         hopGame: {
           create: Array.from({ length: p.soLuongTon }, (_, i) => ({
             maHop: `${p.slug.toUpperCase()}-${String(i + 1).padStart(3, "0")}`,
@@ -130,7 +131,7 @@ async function main() {
     data: {
       donHangId: donActive.id, sanPhamId: sp["catan"], soLuong: 1,
       ngayBatDau: d(catan.start), ngayKetThuc: d(catan.end),
-      tienThue: tienThueCatan, tienCoc: tienCocCatan, donGia: tienThueCatan, diaChiNhan: diaChiNoiThanh,
+      tienThue: tienThueCatan, tienCoc: tienCocCatan, donGia: tienThueCatan, diaChiNhan: diaChiNoiThanh, maHop: "CATAN-001",
     },
   });
   await prisma.datCoc.create({
@@ -217,6 +218,8 @@ async function main() {
       ketQua: "ThanhCong", maQR: "momo://pay?orderId=PAY-SEED-3", hetHanLuc: new Date("2026-10-12T00:15:00Z"), snapshot: "[]",
     },
   });
+
+  await seedReturnsDemo(prisma);
 
   const dem = {
     khachHang: await prisma.khachHang.count(), nhanVien: await prisma.nhanVien.count(),

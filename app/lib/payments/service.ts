@@ -247,6 +247,37 @@ export function createPaymentService(deps: {
             return reload();
           }
 
+          // UC-07 / UC-10: khoản THU THÊM khi quyết toán hoàn cọc — khách đã trả phần còn thiếu, nên đóng đơn
+          // (Completed → Closed). Không có giỏ/tồn kho để kiểm tra nên không qua BRU-07.
+          if (row.mucDich === "ThuThem") {
+            // Cùng khoá với settle/collectAgain (lib/rentals/returns.ts) để không xen kẽ với việc sinh QR mới.
+            if (row.donHang) await lockResource(tx, `ht:${row.donHang.maDon}`);
+
+            const daTraKhoanKhac = row.donHangId
+              ? await tx.thanhToan.findFirst({
+                  where: { donHangId: row.donHangId, mucDich: "ThuThem", trangThai: "DaThanhToan", id: { not: row.id } },
+                  select: { id: true },
+                })
+              : null;
+            const don = row.donHangId
+              ? await tx.donHang.findUnique({ where: { id: row.donHangId }, select: { trangThai: true } })
+              : null;
+            // Khoản nợ đã được trả bởi QR khác (hoặc đơn không còn ở Completed): tiền này là tiền thừa → hoàn ví,
+            // tuyệt đối không để khách trả nợ hai lần mà không được hoàn.
+            if (daTraKhoanKhac || !don || don.trangThai !== "Completed") {
+              await hoanVi(amount, `Hoàn khoản thu thêm trùng cho ${paymentId} (nợ đã được thanh toán)`);
+              await tx.thanhToan.update({
+                where: { id: row.id },
+                data: { trangThai: "DaThanhToan", ketQua: "HoanQuaHan", soTienHoan: amount },
+              });
+              return reload();
+            }
+
+            await tx.thanhToan.update({ where: { id: row.id }, data: { trangThai: "DaThanhToan", ketQua: "ThanhCong" } });
+            await tx.donHang.updateMany({ where: { id: row.donHangId!, trangThai: "Completed" }, data: { trangThai: "Closed" } });
+            return reload();
+          }
+
           // ---- BRU-07: ưu tiên theo thời điểm thanh toán thành công ----
           // Khoá theo từng sản phẩm (sắp xếp cố định để không deadlock): webhook nào lấy được khoá trước
           // thì kiểm tra "còn khả dụng?" và ghi đơn xong, rồi webhook sau mới thấy trùng lịch và bị

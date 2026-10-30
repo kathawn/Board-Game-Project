@@ -108,6 +108,42 @@ approval of the mockup.
 Keep the SRS excerpt text that `spec-driven-mockup` extracts; step 3 and step
 4 both need it verbatim later. Do not re-extract it yourself.
 
+#### UI rule: design for large volumes from the first mockup
+
+Any screen that shows a **collection** (orders, boxes, products, customers,
+payments, history...) must still be usable with hundreds of rows. Mockups
+with 2 demo rows hide this problem; the human then discovers it on review
+and the screen has to be rebuilt (this happened on UC-07/08/09: orders were
+stacked vertically with the box list at the bottom of the page, and the human
+rejected it with "do I have to scroll and hunt by eye?"). So, in the mockup
+itself, not after the rejection:
+
+- **List + detail, not a stack.** Show a compact list (one line per record)
+  on one side and the selected record's detail on the other. Never render
+  every record's full detail one after another down the page.
+- **Search + filter + pagination** on every list. Filter chips carry counts
+  (e.g. "Chờ kiểm đếm 12"). Order the list so what the user can act on right
+  now comes first (actionable stage first, overdue first).
+- **Do the searching/filtering/paging on the server** (query params on the
+  API, `skip`/`take`), and load the list as lightweight summaries; fetch the
+  full detail only for the selected record. Do not fetch everything and
+  filter in the browser.
+- **Separate concerns into tabs/pages.** A second kind of record (e.g. game
+  boxes next to rental orders) gets its own tab with its own search/filter —
+  not a section appended at the bottom of another list. Put a count badge on
+  the tab when something needs attention.
+- **Seed enough demo data to see the problem** (dozens of records, not 2)
+  when the screen is a list, so the human reviews the layout under load. If
+  seeding that much is out of scope, say so explicitly in the Gate 1 message
+  instead of letting a 2-row screen look finished.
+- **No layout shift on interaction.** Controls that appear on selection
+  (a quantity input after clicking "Thiếu") must reserve their space up
+  front; error/result text must not push the button the user just pressed.
+  Use fixed-width columns + `whitespace-nowrap` for buttons and amounts.
+
+State in the Gate 1 message how the screen behaves with many records (what is
+paginated, what is searchable) so the human can reject it on that basis.
+
 ### Step 2 — Gate 1 (no separate action here)
 
 **Gate 1 is not a second step this orchestrator performs.** It already
@@ -199,6 +235,18 @@ and hand back for another manual pass before moving to step 6.
 - Reintroducing a TDD unit-test suite or an automated acceptance-test /
   Playwright-screenshot pass "just to be safe" — fast-track mode drops these
   on purpose; don't quietly add them back.
+- Building a list screen that only works with a handful of records: vertical
+  stacks of full-detail cards, a secondary list parked at the bottom of the
+  page, no search/filter/pagination, client-side filtering of everything. See
+  "UI rule: design for large volumes" in Step 1 — design for volume in the
+  mockup, not after the human rejects it.
+- Letting an interaction shift the layout (an input appearing and pushing
+  buttons sideways, wrapped button labels, error text taking the button's
+  place). Reserve space up front.
+- Testing the manual-test handoff against rows that no longer exist: when
+  giving the human a test order/account list, re-check the data right before
+  handing it over (earlier API smoke tests may have already consumed demo
+  orders), and make the demo seed re-runnable.
 - Letting the Progress Checklist go stale: checking a box before the step
   actually finished, or forgetting to re-post it after a step 4 fix forces
   step 3 to re-run — the checklist should always reflect current reality,

@@ -265,7 +265,7 @@ def build_activity_trahang():
 
     y2 = y_merge + 130
     n2 = d.rect(sys_cx, y2, 260, 70, "Tính phạt trễ hạn / đền bù\n(BRU-03, BRU-04)")
-    n3 = d.rect(sys_cx, y2 + 130, 260, 70, "Tính chênh lệch phí ship\n(FR-TTGV-08)")
+    n3 = d.rect(sys_cx, y2 + 130, 260, 70, "Trừ phí ship thực tế\nhai chiều (FR-TTGV-08)")
     n4 = d.rect(sys_cx, y2 + 260, 260, 70, "Tính số tiền hoàn cọc\ncuối cùng")
     n5 = d.rect(staff_cx, y2 + 390, 260, 70, "Xác nhận hoàn cọc\n(UC-07)")
 

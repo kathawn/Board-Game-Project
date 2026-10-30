@@ -11,6 +11,10 @@ export type ProductTone = "wine" | "amber" | "forest" | "sky";
 export interface LinhKien {
   ten: string;
   docBan: boolean;
+  /** Số lượng chuẩn trong bộ (checklist kiểm đếm UC-08). Mặc định 1. */
+  soLuong?: number;
+  /** Giá lẻ niêm yết (BRU-04b); bỏ trống = nhà phân phối không bán lẻ → đền 20% giá bộ. Giá giả định. */
+  giaLe?: number;
 }
 
 export interface Product {
@@ -39,13 +43,13 @@ export const PRODUCTS: Product[] = [
     giaNiemYet: 450000,
     linhKien: [
       { ten: "Bàn cờ", docBan: true },
-      { ten: "2 xúc xắc", docBan: false },
+      { ten: "2 xúc xắc", docBan: false, soLuong: 2, giaLe: 8000 },
       { ten: "6 quân cờ hình", docBan: true },
-      { ten: "Bộ tiền giấy (7 mệnh giá)", docBan: false },
+      { ten: "Bộ tiền giấy (7 mệnh giá)", docBan: false, giaLe: 30000 },
       { ten: "28 thẻ sở hữu đất", docBan: true },
       { ten: "Thẻ Cơ hội", docBan: true },
       { ten: "Thẻ Khế ước", docBan: true },
-      { ten: "32 nhà, 12 khách sạn gỗ", docBan: false },
+      { ten: "32 nhà, 12 khách sạn gỗ", docBan: false, soLuong: 32, giaLe: 1500 },
     ],
     tone: "amber",
     moTaNgan: "Tham vọng, mặc cả, và một chút lạnh lùng với người thân.",
@@ -61,7 +65,7 @@ export const PRODUCTS: Product[] = [
     giaNiemYet: 220000,
     linhKien: [
       { ten: "Bộ bài vai trò (18 lá)", docBan: true },
-      { ten: "Thẻ Đêm/Ngày", docBan: false },
+      { ten: "Thẻ Đêm/Ngày", docBan: false, giaLe: 15000 },
       { ten: "Hướng dẫn luật chơi", docBan: false },
       { ten: "Hộp đựng bài", docBan: false },
     ],
@@ -81,10 +85,10 @@ export const PRODUCTS: Product[] = [
       { ten: "19 ô địa hình lục giác", docBan: true },
       { ten: "Khung viền biển", docBan: true },
       { ten: "18 thẻ cảng", docBan: true },
-      { ten: "Bộ tài nguyên (gỗ, đất sét, lúa, len, quặng)", docBan: false },
+      { ten: "Bộ tài nguyên (gỗ, đất sét, lúa, len, quặng)", docBan: false, giaLe: 40000 },
       { ten: "25 thẻ phát triển", docBan: true },
-      { ten: "95 nhà/đường/thành gỗ (4 màu)", docBan: false },
-      { ten: "2 xúc xắc", docBan: false },
+      { ten: "95 nhà/đường/thành gỗ (4 màu)", docBan: false, soLuong: 95, giaLe: 1500 },
+      { ten: "2 xúc xắc", docBan: false, soLuong: 2, giaLe: 8000 },
       { ten: "Thẻ cướp biển", docBan: true },
     ],
     tone: "forest",
@@ -119,7 +123,7 @@ export const PRODUCTS: Product[] = [
     linhKien: [
       { ten: "Bộ thẻ kỳ quan (7 kỳ quan)", docBan: true },
       { ten: "Thẻ công trình 3 thời đại", docBan: true },
-      { ten: "Bộ đồng xu", docBan: false },
+      { ten: "Bộ đồng xu", docBan: false, giaLe: 25000 },
       { ten: "Thẻ xung đột quân sự", docBan: true },
     ],
     tone: "forest",
@@ -135,10 +139,10 @@ export const PRODUCTS: Product[] = [
     soNguoiMax: 4,
     giaNiemYet: 580000,
     linhKien: [
-      { ten: "100 viên gạch men (5 màu)", docBan: false },
+      { ten: "100 viên gạch men (5 màu)", docBan: false, soLuong: 100, giaLe: 2000 },
       { ten: "4 bảng cá nhân", docBan: true },
-      { ten: "1 túi vải rút", docBan: false },
-      { ten: "Thẻ điểm tiên phong", docBan: false },
+      { ten: "1 túi vải rút", docBan: false, giaLe: 30000 },
+      { ten: "Thẻ điểm tiên phong", docBan: false, giaLe: 10000 },
     ],
     tone: "sky",
     moTaNgan: "Ghép từng viên gạch men thành bức tường hoàng cung đẹp nhất.",
@@ -156,7 +160,7 @@ export const PRODUCTS: Product[] = [
       { ten: "Bộ bài vai trò (Cảnh sát/Ngoài vòng pháp luật/Phó cảnh sát)", docBan: true },
       { ten: "Bộ bài hành động", docBan: true },
       { ten: "Thẻ súng & vật phẩm", docBan: true },
-      { ten: "Thẻ máu", docBan: false },
+      { ten: "Thẻ máu", docBan: false, giaLe: 20000 },
     ],
     tone: "wine",
     moTaNgan: "Súng, mưu kế và những liên minh đổi chiều giữa miền Viễn Tây.",
@@ -172,7 +176,7 @@ export const PRODUCTS: Product[] = [
     giaNiemYet: 520000,
     linhKien: [
       { ten: "72 quân domino địa hình", docBan: true },
-      { ten: "40 quân thợ xây (follower)", docBan: false },
+      { ten: "40 quân thợ xây (follower)", docBan: false, soLuong: 40, giaLe: 1500 },
       { ten: "Bảng tính điểm", docBan: false },
       { ten: "Túi vải đựng quân", docBan: false },
     ],
@@ -209,7 +213,7 @@ export const PRODUCTS: Product[] = [
     linhKien: [
       { ten: "15 thẻ vai trò (5 loại)", docBan: true },
       { ten: "Thẻ ảnh hưởng", docBan: true },
-      { ten: "Bộ đồng xu nhựa", docBan: false },
+      { ten: "Bộ đồng xu nhựa", docBan: false, giaLe: 20000 },
     ],
     tone: "wine",
     moTaNgan: "Nói dối trơn tru, lật tẩy đúng lúc — triều đình chỉ có một người thắng.",
@@ -264,7 +268,7 @@ export const PRODUCTS: Product[] = [
       { ten: "Bảng bản đồ rừng", docBan: true },
       { ten: "4 bộ quân phe (Mèo/Chim/Chuột/Cáo)", docBan: true },
       { ten: "Bộ thẻ sự kiện", docBan: true },
-      { ten: "Xúc xắc chiến đấu", docBan: false },
+      { ten: "Xúc xắc chiến đấu", docBan: false, giaLe: 15000 },
     ],
     tone: "forest",
     moTaNgan: "Bốn phe, bốn luật chơi riêng — khu rừng chỉ đủ chỗ cho một kẻ thống trị.",
@@ -281,7 +285,7 @@ export const PRODUCTS: Product[] = [
     linhKien: [
       { ten: "Bảng bản đồ lớn", docBan: true },
       { ten: "5 bộ quân phe (mech, công nhân)", docBan: true },
-      { ten: "Bộ thẻ tài nguyên", docBan: false },
+      { ten: "Bộ thẻ tài nguyên", docBan: false, giaLe: 40000 },
       { ten: "Bảng điểm hiện đại hoá", docBan: false },
     ],
     tone: "wine",
@@ -298,7 +302,7 @@ export const PRODUCTS: Product[] = [
     giaNiemYet: 480000,
     linhKien: [
       { ten: "90 thẻ phát triển (3 cấp)", docBan: true },
-      { ten: "Token đá quý (6 loại)", docBan: false },
+      { ten: "Token đá quý (6 loại)", docBan: false, giaLe: 60000 },
       { ten: "10 thẻ quý tộc", docBan: true },
     ],
     tone: "sky",
@@ -315,7 +319,7 @@ export const PRODUCTS: Product[] = [
     giaNiemYet: 690000,
     linhKien: [
       { ten: "Bảng bản đồ tuyến tàu", docBan: true },
-      { ten: "240 toa tàu nhựa (5 màu)", docBan: false },
+      { ten: "240 toa tàu nhựa (5 màu)", docBan: false, soLuong: 240, giaLe: 1200 },
       { ten: "Bộ thẻ toa tàu", docBan: true },
       { ten: "Thẻ lộ trình đích", docBan: true },
     ],

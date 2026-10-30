@@ -43,7 +43,7 @@
         <mxCell id="n11" value="Tính phạt trễ hạn / đền bù (BRU-03, BRU-04)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#000000;fontColor=#000000;fontSize=12;align=center;verticalAlign=middle;" parent="1" vertex="1">
           <mxGeometry x="390" y="1060" width="260" height="70" as="geometry" />
         </mxCell>
-        <mxCell id="n12" value="Tính chênh lệch phí ship (FR-TTGV-08)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#000000;fontColor=#000000;fontSize=12;align=center;verticalAlign=middle;" parent="1" vertex="1">
+        <mxCell id="n12" value="Trừ phí ship thực tế hai chiều (FR-TTGV-08)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#000000;fontColor=#000000;fontSize=12;align=center;verticalAlign=middle;" parent="1" vertex="1">
           <mxGeometry x="390" y="1190" width="260" height="70" as="geometry" />
         </mxCell>
         <mxCell id="n13" value="Tính số tiền hoàn cọc cuối cùng" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#000000;fontColor=#000000;fontSize=12;align=center;verticalAlign=middle;" parent="1" vertex="1">
