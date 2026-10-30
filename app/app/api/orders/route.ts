@@ -19,7 +19,11 @@ export async function GET(request: Request) {
 
   const rows = await getPrisma().donHang.findMany({
     where: { khachHang: { email }, ...(loai ? { loai } : {}) },
-    include: { chiTiet: { include: { sanPham: { select: { ten: true } }, giaoVan: true } }, datCoc: true },
+    include: {
+      chiTiet: { include: { sanPham: { select: { ten: true } }, giaoVan: true } },
+      datCoc: true,
+      thanhToan: { select: { mucDich: true, trangThai: true, soTien: true, soTienHoan: true } },
+    },
     orderBy: { ngayTao: "desc" },
   });
 
@@ -34,16 +38,20 @@ export async function GET(request: Request) {
       chiTiet: thue
         ? row.chiTiet.map((c) => `${c.sanPham.ten} ${c.ngayBatDau ? toIso(c.ngayBatDau) : ""} → ${c.ngayKetThuc ? toIso(c.ngayKetThuc) : ""}`).join("; ")
         : row.chiTiet.map((c) => `${c.sanPham.ten} × ${c.soLuong}`).join("; "),
-      // Đơn thuê hiển thị tiền cọc đã thu; đơn mua hiển thị tổng tiền hàng.
+      // Đơn thuê hiển thị tiền cọc đã thu. Đơn mua hiển thị số khách THỰC TRẢ cho đơn này = khoản TienHang đã thanh toán
+      // (tiền hàng + phí ship một chiều) trừ phần đã hoàn ví (dòng hết hàng); đơn không có khoản thanh toán gắn kèm
+      // (dữ liệu cũ) thì dùng tổng tiền hàng.
       tongTien: thue
         ? Number(row.datCoc?.soTien ?? 0)
-        : row.chiTiet.reduce((sum, c) => sum + Number(c.donGia), 0),
-      ...(thue
-        ? {
-            diaChiNhan: row.chiTiet[0]?.diaChiNhan,
-            shipments: row.chiTiet.flatMap((c) => c.giaoVan.filter((g) => g.maVanDon).map(toShipment)),
-          }
-        : {}),
+        : (() => {
+            const khoan = row.thanhToan.find((t) => t.mucDich === "TienHang" && t.trangThai === "DaThanhToan");
+            return khoan
+              ? Number(khoan.soTien) - Number(khoan.soTienHoan)
+              : row.chiTiet.reduce((sum, c) => sum + Number(c.donGia), 0);
+          })(),
+      // Cả đơn thuê (hai chiều) lẫn đơn mua (một chiều giao) đều trả địa chỉ nhận và vận đơn để khách theo dõi.
+      diaChiNhan: row.chiTiet[0]?.diaChiNhan,
+      shipments: row.chiTiet.flatMap((c) => c.giaoVan.filter((g) => g.maVanDon).map(toShipment)),
     };
   });
 

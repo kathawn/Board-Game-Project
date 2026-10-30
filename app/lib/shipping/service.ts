@@ -26,6 +26,9 @@ export interface ShipmentWithOrder extends Shipment {
 export interface ShippingService {
   /** UC-06: Staff bàn giao cho giao vận. */
   handover(maDon: string): Promise<ShippingResult<{ shipments: Shipment[] }>>;
+  /** UC-03 / FR-TTGV-02..03: Staff giao đơn MUA (Confirmed) cho giao vận — chỉ MỘT chiều giao (không có chiều trả vì
+   * không đổi/trả hàng mua). Hộp game đã Sold từ lúc thanh toán nên không đổi trạng thái hộp. */
+  handoverSale(maDon: string): Promise<ShippingResult<{ shipments: Shipment[] }>>;
   /** UC-11: khách yêu cầu giao vận đến lấy hàng trả. */
   requestPickup(input: { email: string; maDon: string; diaChiTra: string }): Promise<ShippingResult<{ shipments: Shipment[] }>>;
   /** UC-12: webhook trạng thái vận chuyển (đã xác thực chữ ký ở route). */
@@ -184,6 +187,34 @@ export function createShippingService(deps: { getDb: () => PrismaClient; carrier
         }, TX_OPTIONS)),
       ),
 
+    handoverSale: (maDon) =>
+      guard(() =>
+        withCompensation((created) => deps.getDb().$transaction(async (tx) => {
+          // Khoá theo đơn: hai Staff bấm cùng lúc thì chỉ một người đi tiếp và không tạo hai vận đơn cho một đơn.
+          await lockResource(tx, `gv:${maDon}`);
+
+          const order = await tx.donHang.findUnique({
+            where: { maDon },
+            include: { chiTiet: { include: { giaoVan: true } } },
+          });
+          if (!order || order.loai !== "Ban") throw new ShippingError(404, "Không tìm thấy đơn mua.");
+          if (order.trangThai !== "Confirmed") {
+            throw new ShippingError(409, "Đơn mua không ở trạng thái Đã xác nhận nên không thể giao cho vận chuyển.");
+          }
+          if (order.chiTiet.some((c) => c.giaoVan.length > 0)) {
+            throw new ShippingError(409, "Đơn mua này đã có vận đơn.");
+          }
+
+          // MỘT kiện, MỘT vận đơn, MỘT phí ship cho cả đơn — đúng với số tiền khách đã trả (tiền hàng + ship một chiều,
+          // xem createPurchase). Khác đơn thuê (mỗi dòng một vận đơn vì cọc giữ ship theo sản phẩm). Bảng GiaoVan gắn với
+          // dòng đơn nên vận đơn được gắn vào dòng đầu tiên; đối tác lỗi thì rollback (withCompensation huỷ vận đơn).
+          const first = order.chiTiet[0];
+          if (!first) throw new ShippingError(409, "Đơn mua không có dòng sản phẩm nào.");
+          const shipment = await taoVanDon(tx, created, { maDon, chiTietDonId: first.id, chieu: "Nhan", diaChi: first.diaChiNhan });
+          return { ok: true as const, shipments: [shipment] };
+        }, TX_OPTIONS)),
+      ),
+
     requestPickup: ({ email, maDon, diaChiTra }) =>
       guard<{ shipments: Shipment[] }>(() => {
         const diaChi = diaChiTra.trim();
@@ -256,6 +287,20 @@ export function createShippingService(deps: { getDb: () => PrismaClient; carrier
             data: { trangThaiVanChuyen: cuoi, hoanTatLuc: new Date() },
           });
           duplicate = moved.count === 0;
+        }
+
+        // UC-03: đơn MUA chỉ có một chiều giao — khi mọi vận đơn của đơn đã DaGiao thì đơn hoàn tất (Confirmed → Completed).
+        // UPDATE có điều kiện nên webhook lặp không xử lý hai lần.
+        if (trangThai === cuoi && row.chieu === "Nhan") {
+          const don = await db.donHang.findUnique({
+            where: { maDon },
+            select: { id: true, loai: true, chiTiet: { select: { giaoVan: { select: { trangThaiVanChuyen: true } } } } },
+          });
+          const vanDon = don?.chiTiet.flatMap((c) => c.giaoVan) ?? [];
+          const tatCaDaGiao = !!don && don.loai === "Ban" && vanDon.length > 0 && vanDon.every((g) => g.trangThaiVanChuyen === "DaGiao");
+          if (tatCaDaGiao) {
+            await db.donHang.updateMany({ where: { id: don!.id, trangThai: "Confirmed" }, data: { trangThai: "Completed" } });
+          }
         }
 
         const hienTai = await db.giaoVan.findUnique({ where: { maVanDon }, select: { trangThaiVanChuyen: true } });

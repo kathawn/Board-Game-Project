@@ -1,7 +1,8 @@
 import { getSessionEmail } from "@/lib/auth/request";
 import { sessionStore } from "@/lib/auth/server";
 import { cartStore, serializeCart } from "@/lib/cart/server";
-import { checkStock, getProductBySlug } from "@/lib/products";
+import { kiemTraTonKho } from "@/lib/cart/inventory";
+import { getProductBySlug } from "@/lib/products";
 
 /** FR-BH-09: sửa số lượng một sản phẩm trong giỏ trước khi thanh toán. */
 export async function PATCH(
@@ -21,7 +22,7 @@ export async function PATCH(
     return Response.json({ error: "Không tìm thấy sản phẩm." }, { status: 404 });
   }
 
-  const result = checkStock(product, soLuong);
+  const result = await kiemTraTonKho(sanPhamId, soLuong);
   if (!result.ok) {
     return Response.json({ error: result.error }, { status: 409 });
   }
