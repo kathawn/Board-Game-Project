@@ -17,12 +17,13 @@ ENTITIES = {
     },
     "DatCoc": {
         "attrs": [("* id", "UUID", "PK"), ("# don_hang_id", "UUID", "FK, UNIQUE"), ("so_tien", "NUMERIC", None),
-                  ("phi_ship_giu", "NUMERIC", None), ("trang_thai", "ENUM", None), ("ngay_hoan", "DATE", None)],
+                  ("phi_ship_giu", "NUMERIC", None), ("trang_thai", "ENUM", None), ("ngay_hoan", "DATE", None),
+                  ("phieu_quyet_toan", "TEXT", None)],
     },
     "ChiTietDonHang": {
         "attrs": [("* id", "UUID", "PK"), ("# don_hang_id", "UUID", "FK"), ("# san_pham_id", "UUID", "FK"),
                   ("ngay_bat_dau", "DATE", None), ("ngay_ket_thuc", "DATE", None), ("don_gia", "NUMERIC", None),
-                  ("hinh_thuc_nhan", "ENUM", None), ("hinh_thuc_tra", "ENUM", None)],
+                  ("dia_chi_nhan", "VARCHAR", None), ("dia_chi_tra", "VARCHAR", None), ("ma_hop", "VARCHAR", None)],
     },
     "HopGame": {
         "attrs": [("* id", "UUID", "PK"), ("# san_pham_id", "UUID", "FK"), ("ma_hop", "VARCHAR", None),
@@ -34,16 +35,16 @@ ENTITIES = {
     },
     "GiaoVan": {
         "attrs": [("* id", "UUID", "PK"), ("# chi_tiet_don_id", "UUID", "FK"), ("chieu", "ENUM", None),
-                  ("khu_vuc", "ENUM", None), ("phi_ship", "NUMERIC", None), ("ma_van_don", "VARCHAR", None),
-                  ("trang_thai_vanchuyen", "ENUM", None)],
+                  ("doi_tac", "ENUM", None), ("khoang_cach_km", "NUMERIC", None), ("phi_ship", "NUMERIC", None),
+                  ("ma_van_don", "VARCHAR", None), ("trang_thai_vanchuyen", "ENUM", None), ("hoan_tat_luc", "TIMESTAMP", None)],
     },
     "LinhKien": {
         "attrs": [("* id", "UUID", "PK"), ("# san_pham_id", "UUID", "FK"), ("ten_linh_kien", "VARCHAR", None),
-                  ("la_doc_ban", "BOOLEAN", None)],
+                  ("la_doc_ban", "BOOLEAN", None), ("so_luong", "INTEGER", None), ("gia_le", "NUMERIC", None)],
     },
     "BienBanKiemDem": {
         "attrs": [("* id", "UUID", "PK"), ("# chi_tiet_don_id", "UUID", "FK"), ("# nhan_vien_id", "UUID", "FK"),
-                  ("ket_qua", "VARCHAR", None), ("ngay_lap", "TIMESTAMP", None)],
+                  ("ket_qua", "TEXT", None), ("ngay_lap", "TIMESTAMP", None)],
     },
     "NhanVien": {
         "attrs": [("* id", "UUID", "PK"), ("ho_ten", "VARCHAR", None), ("vai_tro", "ENUM", None)],

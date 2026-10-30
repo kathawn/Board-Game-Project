@@ -46,6 +46,14 @@ export async function seedReturnsDemo(prisma: PrismaClient): Promise<void> {
       diaChi: "12 Hàng Bài, Hoàn Kiếm, Hà Nội", start: "2026-10-27", end: "2026-10-30", veKho: "2026-10-30T03:00:00.000Z",
     },
     {
+      maDon: "DT-90005", khach: khach2, slug: "catan", maHop: "", maVanDon: "SPX-290025", maVanDonNhan: "SPX-290024",
+      diaChi: "Thôn 3, xã Đông Hội, huyện Đông Anh, Hà Nội", start: "2026-10-22", end: "2026-10-26", veKho: "2026-10-28T03:00:00.000Z",
+    },
+    {
+      maDon: "DT-90006", khach, slug: "ticket-to-ride", maHop: "", maVanDon: "GSM-290026", maVanDonNhan: "GSM-290023",
+      diaChi: "12 Hàng Bài, Hoàn Kiếm, Hà Nội", start: "2026-10-27", end: "2026-10-30", veKho: "2026-10-30T03:00:00.000Z",
+    },
+    {
       maDon: "DT-90002", khach, slug: "ticket-to-ride", maHop: "TICKET-TO-RIDE-001", maVanDon: "GSM-290002", maVanDonNhan: "GSM-290001",
       diaChi: "12 Hàng Bài, Hoàn Kiếm, Hà Nội", start: "2026-10-27", end: "2026-10-30", veKho: "2026-10-30T03:00:00.000Z",
     },

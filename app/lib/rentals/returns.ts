@@ -48,6 +48,8 @@ export interface ReturnLineView {
   ngayKetThuc: string;
   /** Vận đơn chiều trả (UC-11). */
   tra: { maVanDon: string; doiTac: DoiTacGiaoVan; trangThai: TrangThaiVanChuyen; phiShip: number } | null;
+  /** Phí ship thực tế đã phát sinh ở chiều giao (vận đơn chiều Nhan); 0 nếu chưa có. */
+  phiShipNhan: number;
   /** Ngày hàng về kho (vận đơn chiều trả tới DaLay), giờ Việt Nam; null khi chưa về. */
   ngayTra: string | null;
   soNgayTre: number;
@@ -250,6 +252,7 @@ function toLineView(row: LineRow): ReturnLineView {
           phiShip: Number(tra.phiShip),
         }
       : null,
+    phiShipNhan: row.giaoVan.filter((g) => g.chieu === "Nhan" && g.maVanDon).reduce((s, g) => s + Number(g.phiShip), 0),
     ngayTra,
     soNgayTre: ngayTra && ngayKetThuc ? tinhSoNgayTre(ngayKetThuc, ngayTra) : 0,
     checklist: toChecklist(row),
@@ -280,8 +283,9 @@ function tinhChoDon(order: OrderRow, lines: ReturnLineView[]): { quyetToan: Quye
     return { quyetToan: null, lyDo: `Chưa kiểm đếm (UC-08): ${chuaKiem.map((l) => l.tenSanPham).join(", ")}.` };
   }
 
-  // Cọc giữ phí ship chiều giao × 2 cho MỖI dòng (BRU-01) → phần giữ cho chiều trả của một dòng = tổng / (2 × số dòng).
-  const shipGiuMoiDong = Number(order.datCoc.phiShipGiu) / (2 * lines.length);
+  // Cọc giữ phí ship chiều giao × 2 cho MỖI dòng (BRU-01) → phần ship đã giữ của một dòng = phiShipGiu / số dòng.
+  // Khách chịu 100% phí ship thực tế cả hai chiều (FR-TTGV-08), nên so với tổng ship thực tế giao + trả của dòng đó.
+  const shipGiuMoiDong = Number(order.datCoc.phiShipGiu) / lines.length;
   return {
     lyDo: null,
     quyetToan: tinhQuyetToan({
@@ -291,7 +295,8 @@ function tinhChoDon(order: OrderRow, lines: ReturnLineView[]): { quyetToan: Quye
         giaNiemYet: l.giaNiemYet,
         soNgayTre: l.soNgayTre,
         items: l.bienBan!.items,
-        shipGiuChieuTra: shipGiuMoiDong,
+        shipGiu: shipGiuMoiDong,
+        phiShipNhanThucTe: l.phiShipNhan,
         phiShipTraThucTe: l.tra!.phiShip,
       })),
     }),

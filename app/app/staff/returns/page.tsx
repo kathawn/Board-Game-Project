@@ -605,14 +605,20 @@ export default function StaffReturnsPage() {
                       </span>
                     )}
 
-                    <span className="text-ink-soft">Chênh lệch ship chiều trả (FR-TTGV-08)</span>
+                    <span className="text-ink-soft">Phí ship thực tế khách chịu 100%, cả hai chiều (FR-TTGV-08)</span>
                     <span className="text-right text-ink-soft">
-                      giữ {formatVND(r.shipGiuChieuTra)} / thực tế {formatVND(r.phiShipTraThucTe)}
+                      giao {formatVND(r.phiShipNhanThucTe)} + trả {formatVND(r.phiShipTraThucTe)}
                     </span>
                     <span />
-                    <span className={`text-right font-semibold ${r.chenhShip >= 0 ? "text-forest" : "text-destructive"}`}>
-                      {r.chenhShip >= 0 ? "+ " : "− "}
-                      {formatVND(Math.abs(r.chenhShip))}
+                    <span className="text-right font-semibold text-destructive">
+                      − {formatVND(r.phiShipNhanThucTe + r.phiShipTraThucTe)}
+                    </span>
+                    <span className="col-span-4 text-ink-soft">
+                      (đã giữ {formatVND(r.shipGiu)} trong cọc →{" "}
+                      {r.chenhShip >= 0
+                        ? `dư ${formatVND(r.chenhShip)} được hoàn lại`
+                        : `thiếu ${formatVND(-r.chenhShip)} trừ thêm`}
+                      )
                     </span>
                   </div>
                 </div>
@@ -628,11 +634,8 @@ export default function StaffReturnsPage() {
                   <dd className="font-semibold text-destructive">− {formatVND(kqPhieu.tongDenBu)}</dd>
                 </div>
                 <div className="flex justify-between">
-                  <dt className="text-ink-soft">Tổng chênh lệch ship</dt>
-                  <dd className={`font-semibold ${kqPhieu.tongChenhShip >= 0 ? "text-forest" : "text-destructive"}`}>
-                    {kqPhieu.tongChenhShip >= 0 ? "+ " : "− "}
-                    {formatVND(Math.abs(kqPhieu.tongChenhShip))}
-                  </dd>
+                  <dt className="text-ink-soft">Tổng phí ship thực tế (giao + trả)</dt>
+                  <dd className="font-semibold text-destructive">− {formatVND(kqPhieu.tongShipThucTe)}</dd>
                 </div>
                 <div className="mt-2 flex items-end justify-between border-t border-cream pt-4">
                   <dt className="text-[11px] font-semibold uppercase tracking-wider text-ink-soft">

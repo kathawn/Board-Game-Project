@@ -5,9 +5,10 @@
  *  - BRU-04 / FR-CT-07: đền bù linh kiện thiếu/hư hỏng — độc bản: 100% giá nguyên bộ; phụ kiện bán lẻ: giá lẻ niêm
  *    yết × số lượng; phụ kiện nhà phân phối không bán lẻ: 20% giá bộ × số lượng. Tổng đền bù một sản phẩm không
  *    vượt 100% giá bộ (SRS không nêu trần này; đặt trần để đền bù không bao giờ lớn hơn giá trị cả bộ).
- *  - FR-TTGV-08: chênh lệch phí ship = phần ship CHIỀU TRẢ đã giữ trong cọc − phí ship chiều trả thực tế
- *    (dương = hoàn thêm cho khách, âm = thu thêm). Cọc giữ ship chiều giao × 2 (BRU-01) nên phần giữ cho chiều trả
- *    của mỗi sản phẩm bằng phiShipGiu / (2 × số dòng đơn).
+ *  - FR-TTGV-08: khách chịu 100% phí ship thực tế của CẢ HAI chiều, trừ thẳng vào cọc. Phần ship đã giữ trong cọc
+ *    (ước tính chiều giao × 2, BRU-01) chỉ là dự trù: chênh lệch ship = ship đã giữ − (ship thực tế chiều giao + chiều
+ *    trả) cho biết phần giữ dư (dương, được hoàn lại) hoặc giữ thiếu (âm, trừ thêm). Số hoàn tính gọn là
+ *    cọc − phạt − đền bù − tổng ship thực tế; vì ship thực tế ≥ 0 nên tổng hoàn không bao giờ vượt tiền cọc đã thu.
  *  - FR-CT-07: hoàn cọc = cọc đã thu − phạt − đền bù + chênh lệch ship. Âm thì không trừ âm: khách phải trả thêm
  *    (UC-07 luồng ngoại lệ 4a), thu qua QR (UC-10). */
 
@@ -98,7 +99,9 @@ export interface DongQuyetToanInput {
   giaNiemYet: number;
   soNgayTre: number;
   items: Pick<MucKiemDem, "soLuongLoi" | "donGiaDenBu">[];
-  shipGiuChieuTra: number;
+  /** Phần ship đã giữ trong cọc cho sản phẩm này (ước tính chiều giao × 2, BRU-01). */
+  shipGiu: number;
+  phiShipNhanThucTe: number;
   phiShipTraThucTe: number;
 }
 
@@ -110,8 +113,10 @@ export interface DongQuyetToan {
   phat: number;
   denBuTho: number;
   denBu: number;
-  shipGiuChieuTra: number;
+  shipGiu: number;
+  phiShipNhanThucTe: number;
   phiShipTraThucTe: number;
+  /** shipGiu − (ship thực tế chiều giao + chiều trả); dương = hoàn lại, âm = trừ thêm. */
   chenhShip: number;
 }
 
@@ -121,7 +126,9 @@ export interface QuyetToan {
   tongPhat: number;
   tongDenBu: number;
   tongChenhShip: number;
-  /** Cọc − phạt − đền bù + chênh lệch ship; có thể âm. */
+  /** Tổng ship thực tế khách chịu (chiều giao + chiều trả) của cả đơn, trừ thẳng vào cọc. */
+  tongShipThucTe: number;
+  /** Cọc − phạt − đền bù − tổng ship thực tế; có thể âm. */
   ketQuaCuoi: number;
   /** Phần dương của ketQuaCuoi: cộng vào ví (BRU-06). */
   soTienHoan: number;
@@ -140,21 +147,25 @@ export function tinhQuyetToan(input: { tongCocDaThu: number; dong: DongQuyetToan
       phat: tinhPhatTreHan(d.giaNiemYet, d.soNgayTre),
       denBuTho: tongTho,
       denBu,
-      shipGiuChieuTra: d.shipGiuChieuTra,
+      shipGiu: d.shipGiu,
+      phiShipNhanThucTe: d.phiShipNhanThucTe,
       phiShipTraThucTe: d.phiShipTraThucTe,
-      chenhShip: Math.round(d.shipGiuChieuTra - d.phiShipTraThucTe),
+      chenhShip: Math.round(d.shipGiu - d.phiShipNhanThucTe - d.phiShipTraThucTe),
     };
   });
   const tongPhat = dong.reduce((s, r) => s + r.phat, 0);
   const tongDenBu = dong.reduce((s, r) => s + r.denBu, 0);
   const tongChenhShip = dong.reduce((s, r) => s + r.chenhShip, 0);
-  const ketQuaCuoi = input.tongCocDaThu - tongPhat - tongDenBu + tongChenhShip;
+  const tongShipThucTe = dong.reduce((s, r) => s + r.phiShipNhanThucTe + r.phiShipTraThucTe, 0);
+  // Tương đương (cọc − ship đã giữ) + chênh lệch ship − phạt − đền bù: phần ship dự trù được dùng để trả ship thật.
+  const ketQuaCuoi = input.tongCocDaThu - tongPhat - tongDenBu - tongShipThucTe;
   return {
     tongCocDaThu: input.tongCocDaThu,
     dong,
     tongPhat,
     tongDenBu,
     tongChenhShip,
+    tongShipThucTe,
     ketQuaCuoi,
     soTienHoan: Math.max(0, ketQuaCuoi),
     soTienThuThem: Math.max(0, -ketQuaCuoi),
