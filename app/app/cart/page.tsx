@@ -7,6 +7,7 @@ import { Trash2, CalendarRange, Pencil } from "lucide-react";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { Reveal } from "@/components/Reveal";
+import { PurchaseCartSection } from "@/components/PurchaseCartSection";
 import { getProductBySlug, formatVND } from "@/lib/products";
 import type { RentalCartLine } from "@/lib/rentals/store";
 
@@ -330,6 +331,8 @@ export default function CartPage() {
               </p>
             </>
           )}
+
+          <PurchaseCartSection />
         </div>
       </main>
 
