@@ -94,6 +94,8 @@ async function main() {
         giaNiemYet: p.giaNiemYet,
         danhMuc: p.danhMuc,
         anhUrl: p.anh,
+        soNguoiMin: p.soNguoiMin,
+        soNguoiMax: p.soNguoiMax,
         linhKien: { create: p.linhKien.map((l) => ({ tenLinhKien: l.ten, laDocBan: l.docBan, soLuong: l.soLuong ?? 1, giaLe: l.giaLe ?? null })) },
         hopGame: {
           create: Array.from({ length: p.soLuongTon }, (_, i) => ({
@@ -131,7 +133,7 @@ async function main() {
     data: {
       donHangId: donActive.id, sanPhamId: sp["catan"], soLuong: 1,
       ngayBatDau: d(catan.start), ngayKetThuc: d(catan.end),
-      tienThue: tienThueCatan, tienCoc: tienCocCatan, donGia: tienThueCatan, diaChiNhan: diaChiNoiThanh, maHop: "CATAN-001",
+      tienThue: tienThueCatan, tienCoc: tienCocCatan, donGia: tienThueCatan, giaNiemYetChot: gia("catan"), diaChiNhan: diaChiNoiThanh, maHop: "CATAN-001",
     },
   });
   await prisma.datCoc.create({
@@ -165,7 +167,7 @@ async function main() {
     data: {
       donHangId: donDone.id, sanPhamId: sp["azul"], soLuong: 1,
       ngayBatDau: d(azul.start), ngayKetThuc: d(azul.end),
-      tienThue: tienThueAzul, tienCoc: tienCocAzul, donGia: tienThueAzul,
+      tienThue: tienThueAzul, tienCoc: tienCocAzul, donGia: tienThueAzul, giaNiemYetChot: gia("azul"),
       diaChiNhan: diaChiNgoaiThanh, diaChiTra: diaChiNgoaiThanh,
     },
   });

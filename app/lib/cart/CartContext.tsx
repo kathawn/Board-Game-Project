@@ -8,6 +8,10 @@ export interface CartItem {
   sanPhamId: string;
   soLuong: number;
   donGia: number;
+  /** Do server trả kèm từ danh mục hiện tại (FR-ADM-03) để giao diện không tra danh mục tĩnh. */
+  ten: string;
+  anh: string | null;
+  soLuongTon: number;
 }
 
 interface CartContextValue {

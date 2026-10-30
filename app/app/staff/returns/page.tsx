@@ -19,6 +19,7 @@ import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { Reveal } from "@/components/Reveal";
 import { formatVND } from "@/lib/products";
+import { staffFetch } from "@/lib/auth/staff-client";
 import { TEN_DOI_TAC } from "@/lib/shipping/types";
 import {
   donGiaDenBu,
@@ -212,7 +213,7 @@ export default function StaffReturnsPage() {
 
   const loadList = useCallback(async () => {
     const params = new URLSearchParams({ q: qApplied, stage, page: String(page) });
-    const response = await fetch(`/api/staff/returns?${params}`);
+    const response = await staffFetch(`/api/staff/returns?${params}`);
     const data: ReturnListPage = await response.json();
     setList(data);
     // Chỉ tự chọn đơn đầu tiên khi chưa chọn gì; đơn đã chọn giữ nguyên kể cả khi rời khỏi danh sách (vd. vừa đóng).
@@ -224,14 +225,14 @@ export default function StaffReturnsPage() {
       setDetail(null);
       return;
     }
-    const response = await fetch(`/api/staff/returns/${id}`);
+    const response = await staffFetch(`/api/staff/returns/${id}`);
     const data = await response.json();
     setDetail(response.ok ? data.order : null);
   }, []);
 
   const loadBoxes = useCallback(async () => {
     const params = new URLSearchParams({ q: bqApplied, trangThai: bStatus, page: String(bPage) });
-    const response = await fetch(`/api/staff/boxes?${params}`);
+    const response = await staffFetch(`/api/staff/boxes?${params}`);
     const data: BoxPage = await response.json();
     setBoxData(data);
     if (!bqApplied) setBoxNeed(data.counts.Checking + data.counts.Damaged);
@@ -264,7 +265,7 @@ export default function StaffReturnsPage() {
     setErr(key, "");
     setBusy(key);
     try {
-      const response = await fetch(url, {
+      const response = await staffFetch(url, {
         method: "POST",
         ...(body ? { headers: { "content-type": "application/json" }, body: JSON.stringify(body) } : {}),
       });

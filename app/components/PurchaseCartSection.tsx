@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Minus, Plus, Trash2 } from "lucide-react";
 import { Reveal } from "@/components/Reveal";
 import { useCart } from "@/lib/cart/CartContext";
-import { getProductBySlug, formatVND } from "@/lib/products";
+import { formatVND } from "@/lib/products";
 
 /** FR-BH-09: xem lại giỏ mua, sửa số lượng hoặc xoá bớt sản phẩm trước khi thanh toán. */
 export function PurchaseCartSection() {
@@ -34,8 +34,15 @@ export function PurchaseCartSection() {
             <Reveal className="rounded bg-paper shadow-[0_20px_40px_-20px_rgba(42,31,26,0.2)]">
               <ul>
                 {items.map((item) => {
-                  const product = getProductBySlug(item.sanPhamId);
-                  if (!product) return null;
+                  // Dữ liệu sản phẩm do server trả kèm mỗi dòng giỏ; anh = null nghĩa là sản phẩm không còn trong danh mục.
+                  if (!item.anh) return null;
+                  const product = {
+                    slug: item.sanPhamId,
+                    ten: item.ten,
+                    anh: item.anh,
+                    giaNiemYet: item.donGia,
+                    soLuongTon: item.soLuongTon,
+                  };
 
                   return (
                     <li

@@ -1,4 +1,4 @@
-import { PRODUCTS, filterProducts } from "@/lib/products";
+import { catalog } from "@/lib/catalog/server";
 
 function parsePrice(raw: string | null): number | undefined {
   if (raw === null) return undefined;
@@ -10,7 +10,8 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const loai = searchParams.get("loai");
 
-  const result = filterProducts(PRODUCTS, {
+  // FR-ADM-03: danh mục đọc từ bảng SanPham nên sản phẩm Admin thêm/sửa giá hiện ra ngay.
+  const result = await catalog.list({
     q: searchParams.get("q") ?? undefined,
     danhMuc: searchParams.get("danhMuc") ?? undefined,
     loai: loai === "thue" ? "thue" : "ban",

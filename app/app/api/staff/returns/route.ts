@@ -1,3 +1,4 @@
+import { requireStaff } from "@/lib/auth/staff";
 import { returnService } from "@/lib/rentals/returns-server";
 import { RETURN_STAGES, type ReturnStage } from "@/lib/rentals/returns";
 
@@ -6,6 +7,8 @@ import { RETURN_STAGES, type ReturnStage } from "@/lib/rentals/returns";
  * (UC-13) trong phạm vi MVP đã thống nhất.
  * Query: q, stage (all | ChoVeKho | ChoKiemDem | ChoQuyetToan | ChoThuThem), page, pageSize. */
 export async function GET(request: Request) {
+  const auth = await requireStaff(request);
+  if (!auth.ok) return auth.response;
   const url = new URL(request.url);
   const stageParam = url.searchParams.get("stage");
   const stage = RETURN_STAGES.includes(stageParam as ReturnStage) ? (stageParam as ReturnStage) : "all";

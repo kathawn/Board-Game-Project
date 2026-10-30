@@ -1,8 +1,11 @@
+import { requireStaff } from "@/lib/auth/staff";
 import { returnService } from "@/lib/rentals/returns-server";
 
 /** UC-08 (FR-KHO-01, FR-KHO-02): lưu biên bản kiểm đếm một sản phẩm của đơn, đổi trạng thái hộp game
  * (Rented → Checking → Available/Damaged). Body: { chiTietDonId, items: [{ linhKienId, ketQua, soLuongLoi? }], ghiChuNgoai? }. */
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const auth = await requireStaff(request);
+  if (!auth.ok) return auth.response;
   const { id } = await params;
   let body: Record<string, unknown>;
   try {

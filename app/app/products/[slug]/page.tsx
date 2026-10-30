@@ -7,7 +7,8 @@ import { Footer } from "@/components/layout/Footer";
 import { Reveal } from "@/components/Reveal";
 import { RentalAddToCart } from "@/components/RentalAddToCart";
 import { AddToCartControls } from "@/components/AddToCartControls";
-import { getProductBySlug, formatVND, giaThueNgayDau } from "@/lib/products";
+import { formatVND, giaThueNgayDau } from "@/lib/products";
+import { catalog } from "@/lib/catalog/server";
 
 export default async function ProductDetailPage({
   params,
@@ -18,7 +19,7 @@ export default async function ProductDetailPage({
 }) {
   const { slug } = await params;
   const { loai } = await searchParams;
-  const product = getProductBySlug(slug);
+  const product = await catalog.get(slug);
 
   if (!product) {
     notFound();

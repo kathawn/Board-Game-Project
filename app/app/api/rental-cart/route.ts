@@ -1,7 +1,8 @@
 import { rentalCartStore } from "@/lib/rentals/server";
 import { authService, sessionStore } from "@/lib/auth/server";
 import { getSessionEmail } from "@/lib/auth/request";
-import { getProductBySlug, tinhTienThueNgay } from "@/lib/products";
+import { tinhTienThueNgay } from "@/lib/products";
+import { catalog } from "@/lib/catalog/server";
 import { uocTinhKhoangCachKm, tinhPhiShip, tinhTienCocSanPham } from "@/lib/rentals/deposit";
 
 function soNgay(startDate: string, endDate: string): number {
@@ -29,14 +30,21 @@ export async function GET(request: Request) {
   // Dòng giỏ thuê trỏ tới sản phẩm không còn tồn tại (đã bị xoá khỏi catalog)
   // không đóng góp tiền thuê/tiền cọc ở cả tổng lẫn từng dòng — tránh "cọc
   // ma" chỉ gồm phí ship cho một sản phẩm giá 0 không có thật.
+  const products = await catalog.getMany(lines.map((l) => l.productSlug));
   const dongGia = lines.map((line) => {
-    const giaNiemYet = getProductBySlug(line.productSlug)?.giaNiemYet;
+    const giaNiemYet = products.get(line.productSlug)?.giaNiemYet;
     const tienThue =
       typeof giaNiemYet === "number"
         ? tinhTienThueNgay(giaNiemYet, soNgay(line.startDate, line.endDate))
         : 0;
     const tienCoc = typeof giaNiemYet === "number" ? tinhTienCocSanPham(giaNiemYet, khoangCachKm) : 0;
-    return { lineId: line.id, tienThue, tienCoc };
+    return {
+      lineId: line.id,
+      tienThue,
+      tienCoc,
+      conBan: typeof giaNiemYet === "number",
+      ten: products.get(line.productSlug)?.ten ?? line.productSlug,
+    };
   });
 
   return Response.json({
@@ -61,7 +69,7 @@ export async function POST(request: Request) {
 
   const { productSlug, startDate, endDate } = await request.json();
 
-  const product = getProductBySlug(productSlug);
+  const product = await catalog.get(productSlug);
   if (!product) {
     return Response.json({ error: "Không tìm thấy sản phẩm." }, { status: 404 });
   }

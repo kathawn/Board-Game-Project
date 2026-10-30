@@ -1,12 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Search } from "lucide-react";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { ProductCard } from "@/components/ProductCard";
 import { Reveal } from "@/components/Reveal";
-import { PRODUCTS, filterProducts, formatVND, giaThueNgayDau } from "@/lib/products";
+import { formatVND, giaThueNgayDau, type Product } from "@/lib/products";
 
 type TrangThai = "ban" | "thue";
 
@@ -19,22 +19,47 @@ export default function ProductsPage() {
   const [giaMin, setGiaMin] = useState("");
   const [giaMax, setGiaMax] = useState("");
 
+  // FR-ADM-03: danh mục sản phẩm đọc từ server (bảng SanPham) để sản phẩm/giá Admin vừa sửa hiện ra ngay.
+  const [allProducts, setAllProducts] = useState<Product[]>([]);
+  const [filtered, setFiltered] = useState<Product[]>([]);
+
   const danhMucList = useMemo(
-    () => Array.from(new Set(PRODUCTS.map((p) => p.danhMuc))).sort(),
-    [],
+    () => Array.from(new Set(allProducts.map((p) => p.danhMuc))).sort(),
+    [allProducts],
   );
 
-  const filtered = useMemo(() => {
-    const min = giaMin ? Number(giaMin) : undefined;
-    const max = giaMax ? Number(giaMax) : undefined;
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/products")
+      .then((res) => res.json())
+      .then((data: Product[]) => {
+        if (!cancelled) setAllProducts(data);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
-    return filterProducts(PRODUCTS, {
-      q: query,
-      danhMuc: danhMuc === DANH_MUC_ALL ? undefined : danhMuc,
-      loai: trangThai,
-      giaMin: min !== undefined && !Number.isNaN(min) ? min : undefined,
-      giaMax: max !== undefined && !Number.isNaN(max) ? max : undefined,
-    });
+  useEffect(() => {
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      const params = new URLSearchParams({ loai: trangThai });
+      if (query.trim()) params.set("q", query.trim());
+      if (danhMuc !== DANH_MUC_ALL) params.set("danhMuc", danhMuc);
+      if (giaMin && !Number.isNaN(Number(giaMin))) params.set("giaMin", giaMin);
+      if (giaMax && !Number.isNaN(Number(giaMax))) params.set("giaMax", giaMax);
+      fetch(`/api/products?${params}`)
+        .then((res) => res.json())
+        .then((data: Product[]) => {
+          if (!cancelled) setFiltered(data);
+        })
+        .catch(() => {});
+    }, 250);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
   }, [query, danhMuc, trangThai, giaMin, giaMax]);
 
   return (

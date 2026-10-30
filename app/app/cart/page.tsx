@@ -8,7 +8,7 @@ import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { Reveal } from "@/components/Reveal";
 import { PurchaseCartSection } from "@/components/PurchaseCartSection";
-import { getProductBySlug, formatVND } from "@/lib/products";
+import { formatVND } from "@/lib/products";
 import type { RentalCartLine } from "@/lib/rentals/store";
 
 interface TienCocInfo {
@@ -39,7 +39,7 @@ export default function CartPage() {
   const [savingEdit, setSavingEdit] = useState(false);
   const [checkingOut, setCheckingOut] = useState(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
-  const [dongGia, setDongGia] = useState<{ lineId: string; tienThue: number; tienCoc: number }[]>([]);
+  const [dongGia, setDongGia] = useState<{ lineId: string; tienThue: number; tienCoc: number; conBan: boolean; ten: string }[]>([]);
   const [coc, setCoc] = useState<TienCocInfo>({
     diaChiNhan: "",
     doiTac: "GreenSM",
@@ -113,16 +113,13 @@ export default function CartPage() {
     }
   };
 
+  // FR-ADM-03: tên do server trả kèm giá từng dòng, còn bán hay không do server báo (Admin có thể đã xoá sản phẩm) — không tra danh mục tĩnh.
   const rows = lines
-    .map((line) => ({
-      line,
-      product: getProductBySlug(line.productSlug),
-      tienThue: dongGia.find((d) => d.lineId === line.id)?.tienThue ?? 0,
-    }))
-    .filter(
-      (row): row is { line: RentalCartLine; product: NonNullable<ReturnType<typeof getProductBySlug>>; tienThue: number } =>
-        Boolean(row.product),
-    );
+    .map((line) => {
+      const gia = dongGia.find((d) => d.lineId === line.id);
+      return { line, product: { ten: gia?.ten ?? line.productSlug }, tienThue: gia?.tienThue ?? 0, conBan: gia?.conBan ?? false };
+    })
+    .filter((row) => row.conBan);
 
   const handleCheckout = async () => {
     setCheckoutError(null);

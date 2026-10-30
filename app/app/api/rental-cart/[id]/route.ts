@@ -1,7 +1,7 @@
 import { rentalCartStore } from "@/lib/rentals/server";
 import { sessionStore } from "@/lib/auth/server";
 import { getSessionEmail } from "@/lib/auth/request";
-import { getProductBySlug } from "@/lib/products";
+import { catalog } from "@/lib/catalog/server";
 
 /** FR-CT-09: sửa ngày thuê của một dòng trong giỏ. */
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -18,7 +18,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     return Response.json({ error: "Không tìm thấy dòng trong giỏ thuê." }, { status: 404 });
   }
 
-  const product = getProductBySlug(existingLine.productSlug);
+  const product = await catalog.get(existingLine.productSlug);
   const result = await rentalCartStore.updateLine(email, id, {
     productName: product?.ten ?? existingLine.productSlug,
     startDate,
