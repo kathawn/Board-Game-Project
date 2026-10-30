@@ -29,6 +29,12 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
       ketQua: payment.ketQua,
       maQr: payment.maQr,
       hetHanLuc: payment.hetHanLuc,
+      phiShip: payment.phiShip,
+      muaLines: payment.muaLines.map((l) => ({
+        productName: l.productName,
+        soLuong: l.soLuong,
+        donGia: l.donGia,
+      })),
       lines: payment.lines.map((l) => ({
         productName: l.productName,
         startDate: l.startDate,

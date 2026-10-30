@@ -3,13 +3,14 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { CalendarRange, CheckCircle2 } from "lucide-react";
+import { homNayVN } from "@/lib/cart/paginate";
 
 /** FR-CT-01 (UC-04, BR-01): khách chọn ngày bắt đầu/kết thúc riêng cho sản
  * phẩm đang xem rồi thêm vào giỏ thuê của tài khoản đang đăng nhập. */
 
 export function RentalAddToCart({ productSlug }: { productSlug: string }) {
   const router = useRouter();
-  const today = new Date().toISOString().slice(0, 10);
+  const today = homNayVN();
 
   const [startDate, setStartDate] = useState(today);
   const [endDate, setEndDate] = useState("");

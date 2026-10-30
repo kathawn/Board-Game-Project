@@ -1,3 +1,4 @@
+import { homNayVN } from "../cart/paginate";
 /** FR-CT-01 (BR-01, UC-04): giỏ thuê — khách thêm nhiều sản phẩm vào giỏ,
  * mỗi sản phẩm tự chọn ngày bắt đầu/kết thúc riêng. Tiêu chí chấp nhận của
  * FR-CT-01 yêu cầu mỗi dòng chỉ hợp lệ khi ngày kết thúc sau ngày bắt đầu
@@ -59,6 +60,16 @@ function isValidDate(value: unknown): value is string {
   return typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(Date.parse(value));
 }
 
+function ddmmyyyy(iso: string): string {
+  const [y, m, d] = iso.split("-");
+  return `${d}/${m}/${y}`;
+}
+
+/** Thông báo trùng lịch nêu rõ khoảng ngày đang bị giữ để khách biết chọn lại ngày nào (FR-CT-02). */
+function conflictError(productName: string, r: { startDate: string; endDate: string }): string {
+  return `${productName} đã có đơn thuê khác còn hiệu lực trùng ngày (đang bị giữ ${ddmmyyyy(r.startDate)} → ${ddmmyyyy(r.endDate)}), vui lòng chọn khoảng ngày khác.`;
+}
+
 function rangesOverlap(aStart: string, aEnd: string, bStart: string, bEnd: string): boolean {
   return aStart <= bEnd && bStart <= aEnd;
 }
@@ -89,20 +100,20 @@ export function createInMemoryRentalCartStore(
       if (endDate <= startDate) {
         return { ok: false, error: "Ngày kết thúc phải sau ngày bắt đầu." };
       }
+      if (startDate < homNayVN()) {
+        return { ok: false, error: "Ngày bắt đầu không được ở trong quá khứ." };
+      }
 
       const existingLines = cartsByEmail.get(email) ?? [];
       const linesForSameProduct = existingLines.filter((l) => l.productSlug === productSlug);
       const reservations = ACTIVE_RESERVATIONS[productSlug] ?? [];
       const realOrders = await getActiveReservations(productSlug);
 
-      const conflict = [...reservations, ...realOrders, ...linesForSameProduct].some((r) =>
+      const conflict = [...reservations, ...realOrders, ...linesForSameProduct].find((r) =>
         rangesOverlap(startDate, endDate, r.startDate, r.endDate),
       );
       if (conflict) {
-        return {
-          ok: false,
-          error: `${productName} đã có đơn thuê khác còn hiệu lực trùng ngày trong khoảng đã chọn.`,
-        };
+        return { ok: false, error: conflictError(productName, conflict) };
       }
 
       const line: RentalCartLine = { id: `RC-${nextId++}`, productSlug, startDate, endDate };
@@ -117,6 +128,9 @@ export function createInMemoryRentalCartStore(
       if (endDate <= startDate) {
         return { ok: false, error: "Ngày kết thúc phải sau ngày bắt đầu." };
       }
+      if (startDate < homNayVN()) {
+        return { ok: false, error: "Ngày bắt đầu không được ở trong quá khứ." };
+      }
 
       const existingLines = cartsByEmail.get(email) ?? [];
       const target = existingLines.find((l) => l.id === lineId);
@@ -130,14 +144,11 @@ export function createInMemoryRentalCartStore(
       const reservations = ACTIVE_RESERVATIONS[target.productSlug] ?? [];
       const realOrders = await getActiveReservations(target.productSlug);
 
-      const conflict = [...reservations, ...realOrders, ...linesForSameProduct].some((r) =>
+      const conflict = [...reservations, ...realOrders, ...linesForSameProduct].find((r) =>
         rangesOverlap(startDate, endDate, r.startDate, r.endDate),
       );
       if (conflict) {
-        return {
-          ok: false,
-          error: `${productName} đã có đơn thuê khác còn hiệu lực trùng ngày trong khoảng đã chọn.`,
-        };
+        return { ok: false, error: conflictError(productName, conflict) };
       }
 
       const updated: RentalCartLine = { ...target, startDate, endDate };

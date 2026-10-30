@@ -16,6 +16,9 @@ interface CartContextValue {
   addItem: (sanPhamId: string, soLuong: number) => Promise<StockCheckResult>;
   updateQuantity: (sanPhamId: string, soLuong: number) => Promise<StockCheckResult>;
   removeItem: (sanPhamId: string) => Promise<void>;
+  /** Số dòng giỏ thuê (FR-CT-01) — để badge Header đếm cả hai loại giỏ. */
+  rentalCount: number;
+  setRentalCount: (n: number) => void;
   totalItems: number;
   totalAmount: number;
 }
@@ -35,6 +38,17 @@ async function parseErrorOrItems(response: Response): Promise<
 export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [rentalCount, setRentalCount] = useState(0);
+
+  useEffect(() => {
+    // Chỉ lấy số đếm của giỏ thuê (trang 1), không tải cả giỏ — giỏ có thể rất lớn.
+    fetch("/api/rental-cart/list?page=1")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((body) => {
+        if (body?.counts) setRentalCount(body.counts.all);
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -85,13 +99,14 @@ export function CartProvider({ children }: { children: ReactNode }) {
     setItems(body.items);
   }, []);
 
-  // Badge trên Header đếm số sản phẩm khác nhau trong giỏ, không cộng dồn số lượng từng sản phẩm.
-  const totalItems = items.length;
+  // Badge trên Header đếm số dòng (sản phẩm khác nhau) của cả giỏ mua lẫn giỏ thuê,
+  // không cộng dồn số lượng từng sản phẩm.
+  const totalItems = items.length + rentalCount;
   const totalAmount = items.reduce((sum, i) => sum + i.donGia * i.soLuong, 0);
 
   const value = useMemo<CartContextValue>(
-    () => ({ items, loading, addItem, updateQuantity, removeItem, totalItems, totalAmount }),
-    [items, loading, addItem, updateQuantity, removeItem, totalItems, totalAmount],
+    () => ({ items, loading, addItem, updateQuantity, removeItem, rentalCount, setRentalCount, totalItems, totalAmount }),
+    [items, loading, addItem, updateQuantity, removeItem, rentalCount, totalItems, totalAmount],
   );
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
