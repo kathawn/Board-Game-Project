@@ -31,7 +31,7 @@ export default function StaffLoginPage() {
         setError(data.error ?? "Đã có lỗi xảy ra, vui lòng thử lại.");
         return;
       }
-      router.push(data.vaiTro === "Admin" ? "/admin/products" : "/staff/rental-orders");
+      router.push(data.vaiTro === "Admin" ? "/admin" : "/staff/rental-orders");
     } catch {
       setError("Không kết nối được máy chủ, vui lòng thử lại.");
     } finally {
