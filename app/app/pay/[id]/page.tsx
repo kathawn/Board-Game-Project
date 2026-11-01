@@ -26,7 +26,7 @@ interface PaymentView {
   muaLines: { productName: string; soLuong: number; donGia: number }[];
   soTien: number;
   trangThai: "ChoThanhToan" | "DaThanhToan" | "HetHieuLuc";
-  ketQua: "ThanhCong" | "MotPhanHetHang" | "HetHang" | "ThatBai" | "HoanQuaHan" | "SaiSoTien" | null;
+  ketQua: "ThanhCong" | "MotPhanHetHang" | "HetHang" | "ThatBai" | "HoanQuaHan" | "SaiSoTien" | "Cancelled" | null;
   maQr: string;
   hetHanLuc: number;
   lines: { productName: string; startDate: string; endDate: string; tienCoc: number }[];
@@ -84,6 +84,10 @@ export default function PayPage({ params }: { params: Promise<{ id: string }> })
   const [notFound, setNotFound] = useState(false);
   const [payment, setPayment] = useState<PaymentView | null>(null);
   const [soDuVi, setSoDuVi] = useState(0);
+  // FR-BH-06 (UC-03/UC-04): khách huỷ trước khi thanh toán ("Pending" = khoản QR chưa được MoMo xác nhận).
+  const [cancelConfirm, setCancelConfirm] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
+  const [cancelError, setCancelError] = useState("");
 
   const choThanhToan = payment?.trangThai === "ChoThanhToan";
   const laMua = payment?.mucDich === "TienHang";
@@ -121,6 +125,29 @@ export default function PayPage({ params }: { params: Promise<{ id: string }> })
       cancelled = true;
     };
   }, [id, router, loading, choThanhToan]);
+
+  const handleCancel = async () => {
+    setCancelling(true);
+    setCancelError("");
+    try {
+      const response = await fetch(`/api/payments/${id}`, { method: "POST" });
+      const data = await response.json();
+      if (!response.ok) {
+        setCancelError(data.error ?? "Đã có lỗi xảy ra.");
+        return;
+      }
+      // Tải lại khoản thanh toán (đã chuyển HetHieuLuc/Cancelled) để trang hiện đúng màn kết quả.
+      const reload = await fetch(`/api/payments/${id}`);
+      if (reload.ok) {
+        const reloaded = await reload.json();
+        setPayment(reloaded.payment);
+        setSoDuVi(reloaded.soDuVi);
+      }
+      setCancelConfirm(false);
+    } finally {
+      setCancelling(false);
+    }
+  };
 
   const shell = (children: React.ReactNode) => (
     <>
@@ -231,6 +258,45 @@ export default function PayPage({ params }: { params: Promise<{ id: string }> })
                   (FR-TTGV-07). Trang này tự cập nhật khi có kết quả.
                 </p>
               </div>
+
+              {/* FR-BH-06 (UC-03/UC-04 only): khách huỷ khi đơn/khoản còn Pending (chưa thanh toán). Khoản
+                  thu thêm (ThuThem, UC-07 quyết toán) là nợ còn thiếu sau khi đã thuê/trả hàng — không thuộc
+                  phạm vi FR-BH-06, không cho huỷ ở đây. */}
+              {payment.mucDich !== "ThuThem" && (
+                <>
+                  {cancelError && <p className="mt-3 text-xs font-medium text-destructive">{cancelError}</p>}
+                  <div className="mt-4 flex min-h-[38px] items-center justify-end gap-2 whitespace-nowrap">
+                    {cancelConfirm ? (
+                      <>
+                        <span className="text-xs font-medium text-destructive">Huỷ thanh toán này?</span>
+                        <button
+                          type="button"
+                          onClick={handleCancel}
+                          disabled={cancelling}
+                          className="whitespace-nowrap bg-destructive px-4 py-2 text-xs font-semibold uppercase tracking-wider text-paper transition-colors hover:bg-destructive/90 disabled:opacity-60"
+                        >
+                          {cancelling ? "Đang huỷ..." : "Xác nhận huỷ"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setCancelConfirm(false)}
+                          className="whitespace-nowrap border border-ink/18 px-4 py-2 text-xs font-semibold uppercase tracking-wider text-ink-soft transition-colors hover:border-wine hover:text-wine"
+                        >
+                          Không
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setCancelConfirm(true)}
+                        className="whitespace-nowrap border border-destructive/40 px-4 py-2 text-xs font-semibold uppercase tracking-wider text-destructive transition-colors hover:bg-destructive/10"
+                      >
+                        Huỷ, không thanh toán
+                      </button>
+                    )}
+                  </div>
+                </>
+              )}
             </div>
 
             {process.env.NODE_ENV !== "production" && (
@@ -335,7 +401,25 @@ export default function PayPage({ params }: { params: Promise<{ id: string }> })
           </KetQua>
         )}
 
-        {payment.trangThai === "HetHieuLuc" && (
+        {payment.trangThai === "HetHieuLuc" && payment.ketQua === "Cancelled" && (
+          <KetQua
+            icon={<CircleX className="h-7 w-7" />}
+            tone="bg-ink/10 text-ink-soft"
+            tieuDe="Đã huỷ thanh toán"
+            actions={
+              <Link href="/cart" className={btnPrimary}>
+                {laMua ? "Quay lại giỏ mua" : "Quay lại giỏ thuê"}
+              </Link>
+            }
+          >
+            <p>
+              Bạn đã huỷ trước khi thanh toán (FR-BH-06). Mã QR này không còn hiệu lực, giỏ hàng vẫn được giữ
+              nguyên và bạn chưa bị trừ tiền.
+            </p>
+          </KetQua>
+        )}
+
+        {payment.trangThai === "HetHieuLuc" && payment.ketQua !== "Cancelled" && (
           <KetQua
             icon={<Clock className="h-7 w-7" />}
             tone="bg-ink/10 text-ink-soft"

@@ -4,7 +4,7 @@
 import type { Shipment } from "../shipping/types";
 
 export type LoaiDon = "Ban" | "Thue";
-export type TrangThaiDon = "Pending" | "Confirmed" | "Active" | "Overdue" | "Completed" | "Closed";
+export type TrangThaiDon = "Pending" | "Confirmed" | "Active" | "Overdue" | "Completed" | "Closed" | "Cancelled";
 
 export interface DonHang {
   id: string;

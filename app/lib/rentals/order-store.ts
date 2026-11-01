@@ -1,15 +1,17 @@
 import type { PrismaClient, Prisma } from "../generated/prisma/client";
-import { toIso, TRANG_THAI_DANG_GIU } from "../db/tx";
+import { lockResource, toDate, toIso, TRANG_THAI_DANG_GIU, type Tx } from "../db/tx";
 import { tinhPhiShip, uocTinhKhoangCachKm } from "./deposit";
 import { toShipment } from "../shipping/service";
 import type { Shipment } from "../shipping/types";
+import { creditWallet } from "../payments/wallet";
+import { ngayVietNam } from "./settlement";
 
 /** FR-CT-05 (BR-01, UC-05/UC-06): đơn thuê. Đơn chỉ được TẠO bởi webhook thanh toán cọc thành công
  * (lib/payments/service.ts, UC-10); store này chỉ đọc và xác nhận. Mỗi dòng giữ lại tiền thuê
  * (FR-CT-04/BRU-02) và tiền cọc (FR-CT-03/BRU-01) đã tính lúc tạo đơn, để Staff xác nhận (UC-05)
  * không cần tính lại và không bị ảnh hưởng nếu giá niêm yết đổi sau đó. */
 
-export type TrangThaiDonThue = "Pending" | "Confirmed" | "Active" | "Overdue";
+export type TrangThaiDonThue = "Pending" | "Confirmed" | "Active" | "Overdue" | "Cancelled";
 
 export interface RentalOrderLine {
   productSlug: string;
@@ -65,6 +67,9 @@ export interface RentalOrderStore {
   get(id: string): Promise<RentalOrder | undefined>;
   /** FR-CT-05/UC-05: Staff xác nhận đơn — chỉ hợp lệ khi đơn đang ở Pending. */
   confirm(id: string): Promise<{ ok: true; order: RentalOrder } | { ok: false; error: string }>;
+  /** FR-BH-06 (UC-04 luồng thay thế): khách tự huỷ đơn thuê của chính mình khi còn Pending (chưa được
+   * Staff xác nhận) — hoàn toàn bộ tiền cọc đã thu vào Ví điện tử nội bộ (BRU-06). */
+  cancel(id: string, email: string): Promise<{ ok: true; order: RentalOrder } | { ok: false; status: 404 | 409; error: string }>;
   /** FR-CT-02/BR-05: khoảng ngày của một sản phẩm trong mọi đơn thuê còn hiệu lực. */
   listActiveDateRangesForProduct(productSlug: string): Promise<{ startDate: string; endDate: string }[]>;
 }
@@ -91,7 +96,7 @@ function toRentalOrder(row: OrderRow): RentalOrder {
   return {
     id: row.maDon,
     email: row.khachHang.email,
-    trangThai: (["Confirmed", "Active", "Overdue"].includes(row.trangThai) ? row.trangThai : "Pending") as TrangThaiDonThue,
+    trangThai: (["Confirmed", "Active", "Overdue", "Cancelled"].includes(row.trangThai) ? row.trangThai : "Pending") as TrangThaiDonThue,
     ngayTao: toIso(row.ngayTao),
     diaChiNhan,
     // Đối tác giao vận dự kiến chọn theo khoảng cách (BRU-05) — suy ra từ địa chỉ nhận; vận đơn thật nằm
@@ -181,6 +186,62 @@ export function createPrismaRentalOrderStore(getDb: () => PrismaClient): RentalO
         };
       }
       return { ok: true, order: (await this.get(id))! };
+    },
+
+    async cancel(id, email) {
+      const db = getDb();
+      return db.$transaction(async (tx: Tx) => {
+        // Khoá cùng tên với settle/collectAgain (lib/rentals/returns.ts) để không xen kẽ với các bước xử lý
+        // khác trên đơn này. confirm()/handover() không dùng khoá này — chống hai bên "thắng" cùng lúc giữa
+        // huỷ và xác nhận/bàn giao đến từ việc cả hai đều là UPDATE có điều kiện trên tiền đề loại trừ nhau
+        // (Pending vs đã Confirmed), không phải từ khoá chung.
+        await lockResource(tx, `ht:${id}`);
+
+        const order = await tx.donHang.findUnique({
+          where: { maDon: id },
+          select: { id: true, loai: true, trangThai: true, khachHang: { select: { email: true } } },
+        });
+        if (!order || order.loai !== "Thue" || order.khachHang.email !== email) {
+          return { ok: false as const, status: 404 as const, error: "Không tìm thấy đơn thuê." };
+        }
+
+        // UPDATE có điều kiện: Staff xác nhận (UC-05) đúng lúc khách bấm huỷ thì chỉ một bên thắng.
+        const updated = await tx.donHang.updateMany({
+          where: { id: order.id, trangThai: "Pending" },
+          data: { trangThai: "Cancelled" },
+        });
+        if (updated.count === 0) {
+          return { ok: false as const, status: 409 as const, error: "Đơn thuê đã được xác nhận hoặc không còn ở trạng thái chờ xác nhận, không thể huỷ." };
+        }
+
+        // Đơn thuê Pending luôn được webhook tạo kèm DatCoc + khoản TienCoc đã DaThanhToan (lib/payments/service.ts)
+        // — tiền đã thu thật nên không được âm thầm bỏ qua hoàn ví nếu thiếu một trong hai; ném lỗi để dừng cả
+        // transaction (rollback luôn bước huỷ đơn) thay vì mất tiền không dấu vết.
+        const coc = await tx.datCoc.findUnique({ where: { donHangId: order.id } });
+        if (!coc) throw new Error(`Đơn thuê ${id} không có tiền cọc để hoàn — dữ liệu không nhất quán.`);
+        const thanhToanCoc = await tx.thanhToan.findFirst({
+          where: { donHangId: order.id, mucDich: "TienCoc", trangThai: "DaThanhToan" },
+          select: { id: true, maThanhToan: true },
+        });
+        if (!thanhToanCoc) throw new Error(`Đơn thuê ${id} không có khoản tiền cọc đã thanh toán để hoàn — dữ liệu không nhất quán.`);
+
+        await creditWallet(tx, {
+          email,
+          thanhToanId: thanhToanCoc.id,
+          maGiaoDich: `HUYDON-${id}`,
+          soTien: Number(coc.soTien),
+          lyDo: `Hoàn cọc đơn ${id} — khách huỷ khi còn chờ xác nhận (FR-BH-06)`,
+        });
+        await tx.datCoc.update({
+          where: { donHangId: order.id },
+          data: { trangThai: "Refunded", ngayHoan: toDate(ngayVietNam(new Date())) },
+        });
+
+        // Đọc lại trong CHÍNH transaction này (không gọi this.get(), vì đó mở kết nối mới và sẽ
+        // chờ chính khoá hàng mà transaction này đang giữ, gây timeout).
+        const after = await tx.donHang.findUniqueOrThrow({ where: { id: order.id }, include: includeOrder });
+        return { ok: true as const, order: toRentalOrder(after) };
+      }, { maxWait: 15_000, timeout: 30_000 });
     },
 
     async listActiveDateRangesForProduct(productSlug) {

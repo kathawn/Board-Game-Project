@@ -57,7 +57,7 @@ export interface AdminProductPage {
 // ===== UC-16 (FR-ADM-04, FR-ADM-05) — Báo cáo chi tiết, dùng chung client/API (xem lib/admin/reports.ts) =====
 
 export type LoaiDon = "Ban" | "Thue";
-export type TrangThaiDon = "Pending" | "Confirmed" | "Active" | "Overdue" | "Completed" | "Closed";
+export type TrangThaiDon = "Pending" | "Confirmed" | "Active" | "Overdue" | "Completed" | "Closed" | "Cancelled";
 export type TrangThaiHop = "Available" | "Reserved" | "Rented" | "Checking" | "Damaged" | "Sold";
 
 export interface RevenueLineRow {

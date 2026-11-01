@@ -29,6 +29,7 @@ const DON_LABEL: Record<TrangThaiDon, string> = {
   Overdue: "Quá hạn",
   Completed: "Hoàn tất trả",
   Closed: "Đã đóng",
+  Cancelled: "Đã huỷ",
 };
 const HOP_LABEL: Record<TrangThaiHop, string> = {
   Available: "Sẵn sàng",
@@ -47,6 +48,7 @@ const DON_TONE: Record<TrangThaiDon, string> = {
   Overdue: "text-destructive",
   Completed: "text-gold",
   Closed: "text-ink-soft",
+  Cancelled: "text-destructive",
 };
 const HOP_TONE: Record<TrangThaiHop, string> = {
   Available: "text-forest",
