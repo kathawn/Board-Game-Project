@@ -37,7 +37,7 @@ export function createAdminProductService(getDb: () => PrismaClient): AdminProdu
       const [rows, grouped, tatCaDanhMuc] = await Promise.all([
         db.sanPham.findMany({
           where,
-          select: { slug: true, ten: true, danhMuc: true, giaNiemYet: true },
+          select: { slug: true, ten: true, danhMuc: true, giaNiemYet: true, anhUrl: true },
           orderBy: { ten: "asc" },
           skip: (current - 1) * PAGE_SIZE,
           take: PAGE_SIZE,
@@ -48,7 +48,7 @@ export function createAdminProductService(getDb: () => PrismaClient): AdminProdu
 
       const categoryCounts = Object.fromEntries(grouped.map((g) => [g.danhMuc, g._count._all]));
       return {
-        items: rows.map((r) => ({ slug: r.slug, ten: r.ten, danhMuc: r.danhMuc, giaNiemYet: Number(r.giaNiemYet) })),
+        items: rows.map((r) => ({ slug: r.slug, ten: r.ten, danhMuc: r.danhMuc, giaNiemYet: Number(r.giaNiemYet), anh: r.anhUrl })),
         total,
         page: current,
         totalPages,

@@ -5,20 +5,20 @@ import "./globals.css";
 
 const fraunces = Fraunces({
   variable: "--font-fraunces",
-  subsets: ["latin"],
+  subsets: ["latin", "vietnamese"],
   style: ["normal", "italic"],
   weight: ["500", "600", "700", "800", "900"],
 });
 
 const italianno = Italianno({
   variable: "--font-italianno",
-  subsets: ["latin"],
+  subsets: ["latin", "vietnamese"],
   weight: "400",
 });
 
 const beVietnamPro = Be_Vietnam_Pro({
   variable: "--font-be-vietnam-pro",
-  subsets: ["latin"],
+  subsets: ["latin", "vietnamese"],
   weight: ["300", "400", "500", "600", "700", "800"],
 });
 

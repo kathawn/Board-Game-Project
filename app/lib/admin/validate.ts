@@ -5,6 +5,8 @@ import type { AdminProductInput } from "./types";
 export const SLUG_RE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 /** Cột giaNiemYet là DECIMAL(12,0) (ERD) nên tối đa 12 chữ số. */
 export const GIA_TOI_DA = 999_999_999_999;
+/** Cột SanPham.danhMuc — dùng chung cho cả form sản phẩm và đổi tên/gộp danh mục (lib/admin/categories.ts). */
+export const DANH_MUC_TOI_DA = 100;
 
 export type ValidationResult = { ok: true; value: AdminProductInput } | { ok: false; error: string };
 
