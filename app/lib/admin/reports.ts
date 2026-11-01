@@ -15,7 +15,7 @@ import type { DonRow, HopRow, LoaiDon, Paged, RangeSummary, RevenueLineRow, Tran
 
 export const PAGE_SIZE = 10;
 
-export const DON_STATUSES: TrangThaiDon[] = ["Pending", "Confirmed", "Active", "Overdue", "Completed", "Closed"];
+export const DON_STATUSES: TrangThaiDon[] = ["Pending", "Confirmed", "Active", "Overdue", "Completed", "Closed", "Cancelled"];
 export const HOP_STATUSES: TrangThaiHop[] = ["Available", "Reserved", "Rented", "Checking", "Damaged", "Sold"];
 
 export type { DonRow, HopRow, LoaiDon, Paged, RangeSummary, RevenueLineRow, TrangThaiDon, TrangThaiHop };
@@ -150,7 +150,7 @@ export function createAdminReportService(getDb: () => PrismaClient): AdminReport
       const counts = Object.fromEntries(DON_STATUSES.map((s) => [s, 0])) as Record<TrangThaiDon, number>;
       for (const g of grouped) counts[g.trangThai as TrangThaiDon] = g._count._all;
 
-      const uuTien: TrangThaiDon[] = ["Overdue", "Pending", "Confirmed", "Active", "Completed", "Closed"];
+      const uuTien: TrangThaiDon[] = ["Overdue", "Pending", "Confirmed", "Active", "Completed", "Closed", "Cancelled"];
       const mapped: DonRow[] = rows.map((r) => {
         const loaiDon = r.loai as LoaiDon;
         return {

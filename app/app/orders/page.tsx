@@ -17,6 +17,7 @@ const TRANG_THAI_LABEL: Record<TrangThaiDon, { label: string; className: string 
   Overdue: { label: "Quá hạn trả", className: "bg-destructive/15 text-destructive" },
   Completed: { label: "Hoàn tất", className: "bg-forest/15 text-forest" },
   Closed: { label: "Đã đóng", className: "bg-forest/15 text-forest" },
+  Cancelled: { label: "Đã huỷ", className: "bg-destructive/15 text-destructive" },
 };
 
 /** FR-CT-05: đơn thuê chỉ được tạo sau khi webhook thanh toán cọc thành công
@@ -59,6 +60,9 @@ export default function OrdersPage() {
   const [diaChiTra, setDiaChiTra] = useState<Record<string, string>>({});
   const [pickingId, setPickingId] = useState<string | null>(null);
   const [errorByOrder, setErrorByOrder] = useState<Record<string, string>>({});
+  // FR-BH-06 (UC-04 bước 8/luồng thay thế): khách huỷ đơn thuê khi còn Pending (chưa được Staff xác nhận).
+  const [cancelConfirmId, setCancelConfirmId] = useState<string | null>(null);
+  const [cancellingId, setCancellingId] = useState<string | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -104,6 +108,23 @@ export default function OrdersPage() {
       setReloadKey((k) => k + 1);
     } finally {
       setPickingId(null);
+    }
+  };
+
+  const handleCancel = async (orderId: string) => {
+    setErrorByOrder((prev) => ({ ...prev, [orderId]: "" }));
+    setCancellingId(orderId);
+    try {
+      const response = await fetch(`/api/rentals/${orderId}/cancel`, { method: "POST" });
+      const data = await response.json();
+      if (!response.ok) {
+        setErrorByOrder((prev) => ({ ...prev, [orderId]: data.error ?? "Đã có lỗi xảy ra." }));
+        return;
+      }
+      setCancelConfirmId(null);
+      setReloadKey((k) => k + 1);
+    } finally {
+      setCancellingId(null);
     }
   };
 
@@ -235,6 +256,54 @@ export default function OrdersPage() {
                             </li>
                           ))}
                         </ul>
+                      )}
+
+                      {/* FR-BH-06: đơn thuê còn Pending (chưa được Staff xác nhận, UC-05) thì khách huỷ được. */}
+                      {order.trangThai === "Pending" && order.loai === "Thue" && (
+                        <div className="mt-4 flex min-h-[38px] flex-col gap-2 border-t border-ink/10 pt-3">
+                          <div className="flex items-center justify-between gap-3">
+                            <p className="text-xs text-ink-soft">
+                              Đơn chưa được nhân viên xác nhận — bạn có thể huỷ nếu đổi ý.
+                            </p>
+                            {cancelConfirmId === order.id ? (
+                              <span className="flex shrink-0 items-center gap-2 whitespace-nowrap">
+                                <span className="text-xs font-medium text-destructive">Huỷ đơn này?</span>
+                                <button
+                                  type="button"
+                                  onClick={() => handleCancel(order.id)}
+                                  disabled={cancellingId === order.id}
+                                  className="whitespace-nowrap bg-destructive px-4 py-2 text-xs font-semibold uppercase tracking-wider text-paper transition-colors hover:bg-destructive/90 disabled:opacity-60"
+                                >
+                                  {cancellingId === order.id ? "Đang huỷ..." : "Xác nhận huỷ"}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setCancelConfirmId(null)}
+                                  className="whitespace-nowrap border border-ink/18 px-4 py-2 text-xs font-semibold uppercase tracking-wider text-ink-soft transition-colors hover:border-wine hover:text-wine"
+                                >
+                                  Không
+                                </button>
+                              </span>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => setCancelConfirmId(order.id)}
+                                className="shrink-0 whitespace-nowrap border border-destructive/40 px-4 py-2 text-xs font-semibold uppercase tracking-wider text-destructive transition-colors hover:bg-destructive/10"
+                              >
+                                Huỷ đơn
+                              </button>
+                            )}
+                          </div>
+                          {errorByOrder[order.id] && (
+                            <p className="text-xs font-medium text-destructive">{errorByOrder[order.id]}</p>
+                          )}
+                        </div>
+                      )}
+
+                      {order.trangThai === "Cancelled" && order.loai === "Thue" && (
+                        <p className="mt-4 border-t border-ink/10 pt-3 text-xs font-medium text-ink-soft">
+                          Đơn đã được huỷ. Tiền cọc đã hoàn vào Ví điện tử nội bộ.
+                        </p>
                       )}
 
                       {(order.trangThai === "Active" || order.trangThai === "Overdue") &&

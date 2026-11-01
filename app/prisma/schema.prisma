@@ -129,7 +129,7 @@ model DonHang {
   khachHang   KhachHang        @relation(fields: [khachHangId], references: [id])
   // LoaiDonHang: Ban | Thue
   loai        String
-  // TrangThaiDon: Pending | Confirmed | Active | Overdue | Completed | Closed
+  // TrangThaiDon: Pending | Confirmed | Active | Overdue | Completed | Closed | Cancelled
   trangThai   String           @default("Pending")
   ngayTao     DateTime         @default(now())
   chiTiet     ChiTietDonHang[]

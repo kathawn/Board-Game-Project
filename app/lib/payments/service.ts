@@ -18,14 +18,15 @@ export type TrangThaiThanhToan = "ChoThanhToan" | "DaThanhToan" | "HetHieuLuc";
 /** Kết quả nghiệp vụ gắn thêm để giao diện biết hiển thị màn hình nào — không có trong ERD:
  * ThatBai = UC-10 3b; HetHang = UC-10 4a/7b (BRU-07: thua race, đã hoàn ví); MotPhanHetHang = giỏ
  * nhiều sản phẩm, chỉ một phần bị người khác chiếm trước; HoanQuaHan = tiền về sau khi QR hết hạn;
- * SaiSoTien = số tiền MoMo thu khác số cần thu. */
+ * SaiSoTien = số tiền MoMo thu khác số cần thu; Cancelled = khách tự huỷ trước khi thanh toán (FR-BH-06). */
 export type KetQuaThanhToan =
   | "ThanhCong"
   | "MotPhanHetHang"
   | "HetHang"
   | "ThatBai"
   | "HoanQuaHan"
-  | "SaiSoTien";
+  | "SaiSoTien"
+  | "Cancelled";
 
 export const THOI_HAN_QR_MS = 15 * 60 * 1000;
 
@@ -94,6 +95,9 @@ export interface PaymentService {
   applyWebhook(input: WebhookInput): Promise<WebhookResult>;
   /** Chỉ dùng cho trang giả lập MoMo: ép khoản thanh toán hết hạn ngay (mô phỏng "15 phút trôi qua"). */
   expireNow(id: string): Promise<Payment | undefined>;
+  /** FR-BH-06 (UC-03/UC-04 luồng thay thế): khách tự huỷ khoản thanh toán của chính mình khi còn
+   * ChoThanhToan (chưa có webhook nào về) — chỉ chủ khoản mới huỷ được. */
+  cancel(id: string, email: string): Promise<{ ok: true; payment: Payment } | { ok: false; status: 404 | 409; error: string }>;
 }
 
 const include = {
@@ -152,6 +156,8 @@ function toPayment(row: Row): Payment {
 function rangesOverlap(aStart: string, aEnd: string, bStart: string, bEnd: string): boolean {
   return aStart <= bEnd && bStart <= aEnd;
 }
+
+const TX_OPTIONS = { maxWait: 15_000, timeout: 30_000 };
 
 export function createPaymentService(deps: {
   getDb: () => PrismaClient;
@@ -258,6 +264,36 @@ export function createPaymentService(deps: {
       });
       const row = await db.thanhToan.findUnique({ where: { maThanhToan: id }, include });
       return row ? toPayment(row) : undefined;
+    },
+
+    async cancel(id, email) {
+      const db = deps.getDb();
+      return db.$transaction(async (tx) => {
+        // Cùng khoá với webhook (pay:${id}): nếu webhook đang xử lý cùng lúc, chỉ một bên thắng.
+        await lockResource(tx, `pay:${id}`);
+        await expireIfDue(tx, id);
+        const row = await tx.thanhToan.findUnique({ where: { maThanhToan: id }, include });
+        if (!row || row.khachHang.email !== email) {
+          return { ok: false, status: 404, error: "Không tìm thấy khoản thanh toán." };
+        }
+        // FR-BH-06 chỉ áp dụng cho UC-03/UC-04 (đặt mua/đặt thuê trước khi thanh toán) — khoản thu thêm
+        // (ThuThem, UC-07 quyết toán hoàn cọc) là nợ khách còn thiếu sau khi đã thuê/trả hàng, không phải
+        // một đơn đang chờ tạo nên không cho huỷ ở đây; khách cần thanh toán hoặc chờ Staff xử lý.
+        if (row.mucDich === "ThuThem") {
+          return { ok: false, status: 409, error: "Không thể huỷ khoản thu thêm — vui lòng thanh toán hoặc liên hệ nhân viên." };
+        }
+        // UPDATE có điều kiện: webhook thắng race (đã DaThanhToan/HetHieuLuc trước khi khoá này vào) thì khách
+        // không huỷ được nữa — chưa thu được tiền (FR-TTGV-07) nên không có gì để hoàn.
+        const updated = await tx.thanhToan.updateMany({
+          where: { id: row.id, trangThai: "ChoThanhToan" },
+          data: { trangThai: "HetHieuLuc", ketQua: "Cancelled" },
+        });
+        if (updated.count === 0) {
+          return { ok: false, status: 409, error: "Khoản thanh toán không còn ở trạng thái chờ thanh toán." };
+        }
+        const after = await tx.thanhToan.findUniqueOrThrow({ where: { id: row.id }, include });
+        return { ok: true, payment: toPayment(after) };
+      }, TX_OPTIONS);
     },
 
     async applyWebhook({ paymentId, transactionId, amount, resultCode }) {
