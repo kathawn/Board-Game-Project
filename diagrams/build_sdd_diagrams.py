@@ -14,9 +14,9 @@ def build():
     dk.layers(
         [
             "Presentation — Next.js App Router (React Server/Client Components)",
-            "Application/Service — Server Actions & Route Handlers (xử lý nghiệp vụ, quy tắc BRU-01..04)",
-            "Data Access — Prisma ORM (Repository/Client)",
-            "Database — PostgreSQL",
+            "Application/Service — Route Handlers app/api/**/route.ts (không dùng Server Actions) + module hàm lib/** (xử lý nghiệp vụ, quy tắc BRU-01..07)",
+            "Data Access — Prisma ORM qua @prisma/adapter-mssql (driver adapter)",
+            "Database — Microsoft SQL Server",
         ],
         os.path.join(OUT, "sdd_1_architecture.png"),
         title="Hình 1 – Kiến trúc phần mềm tổng thể (Layered Architecture)",
@@ -59,7 +59,7 @@ def build():
             (0.05, 0.03, 0.95, 0.10, "Header: Giỏ hàng (chỉ sản phẩm mua)"),
             (0.05, 0.13, 0.95, 0.46, "Danh sách sản phẩm trong giỏ: tên, đơn giá, số lượng [-][+], [Xoá] — nhiều dòng"),
             (0.05, 0.49, 0.95, 0.60, "Tổng tiền hàng + phí ship dự kiến (cập nhật theo số lượng)"),
-            (0.05, 0.63, 0.95, 0.76, "Chọn hình thức nhận hàng\n( ) Tự đến lấy  ( ) Giao vận [khu vực]"),
+            (0.05, 0.63, 0.95, 0.76, "Địa chỉ nhận hàng (giao vận bắt buộc, tự động chọn đối tác theo khoảng cách — BRU-05)"),
             (0.05, 0.79, 0.95, 0.92, "[Nút: Tiến hành thanh toán → SCR-06]"),
         ],
         os.path.join(OUT, "sdd_wireframe_cart.png"), title="SCR-03 Giỏ hàng / Thanh toán", width=560, height=420,

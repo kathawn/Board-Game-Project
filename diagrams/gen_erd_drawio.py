@@ -188,7 +188,7 @@ xml = f"""<mxfile host="app.diagrams.net">
 </mxfile>
 """
 
-out_path = "D:/Brd/diagrams/srs_3_5_erd.drawio"
+out_path = "D:/Brd/diagrams/drawio/srs_3_5_erd.drawio"
 with open(out_path, "w", encoding="utf-8") as f:
     f.write(xml)
 print("Da sinh:", out_path)

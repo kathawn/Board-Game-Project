@@ -10,7 +10,7 @@ import sys
 
 sys.stdout.reconfigure(encoding="utf-8")
 
-OUT_DIR = "D:/Brd/diagrams/"
+OUT_DIR = "D:/Brd/diagrams/drawio/"
 
 
 def esc(s):
@@ -171,46 +171,55 @@ class Diagram:
 # Hinh 3.4 - Activity Diagram (Swimlane): luong dat thue
 # ===========================================================================
 def build_activity_dathue():
+    """Hinh 3.4 - phai khop dung PlantUML trong fill_srs.py (dong ~817-847).
+    Khong con nhanh 'tu den lay / giao van' (SRS 1.3+: giao van bat buoc 2 chieu,
+    BRU-05/SC-08) - chi con 1 quyet dinh duy nhat la webhook thanh toan (BRU-07)."""
     d = Diagram("Hinh 3.4 - Activity luong dat thue", "srs-3-6-act-dathue")
 
     LANE_CUS_X, LANE_SYS_X, LANE_STAFF_X = 40, 360, 680
-    LANE_CUS_W, LANE_SYS_W, LANE_STAFF_W = 320, 320, 560
+    LANE_W = 320
     TOP = 40
 
-    cus_cx = LANE_CUS_X + (LANE_CUS_W - 260) // 2
-    sys_cx = LANE_SYS_X + (LANE_SYS_W - 260) // 2
-    staff_cx = LANE_STAFF_X + (LANE_STAFF_W - 260) // 2
+    cus_cx = LANE_CUS_X + (LANE_W - 260) // 2
+    sys_cx = LANE_SYS_X + (LANE_W - 260) // 2
+    staff_cx = LANE_STAFF_X + (LANE_W - 260) // 2
 
-    n_start = d.circle(LANE_CUS_X + (LANE_CUS_W - 30) // 2, 90, 30, filled=True, track_label="(start)")
+    n_start = d.circle(cus_cx + 115, 90, 30, filled=True, track_label="(start)")
 
     n1 = d.rect(cus_cx, 220, 260, 70, "Chọn sản phẩm & ngày thuê")
-    n2 = d.rect(cus_cx, 350, 260, 70, "Chọn hình thức nhận hàng\n(tự đến lấy / giao vận)")
-    n3 = d.rect(sys_cx, 480, 260, 70, "Kiểm tra tồn kho theo ngày\n(FR-CT-02)")
-    n4 = d.rect(sys_cx, 610, 260, 70, "Tính tiền thuê (BRU-02) và phí ship\nnếu có (BRU-05)")
-    n5 = d.rect(sys_cx, 740, 260, 70, "Tính tiền cọc theo BRU-01")
-    n6 = d.rect(cus_cx, 870, 260, 70, "Thanh toán cọc qua mã QR\n(UC-10)")
-    n7 = d.rect(sys_cx, 1000, 260, 70, "Xác nhận thanh toán (webhook)")
-    n8 = d.rect(sys_cx, 1130, 260, 70, "Tạo đơn thuê trạng thái Pending")
-    n9 = d.rect(staff_cx, 1260, 260, 70, "Xác nhận đơn thuê (UC-05)")
+    n2 = d.rect(cus_cx, 350, 260, 90, "Xác nhận địa chỉ nhận hàng\n(lấy từ hồ sơ cá nhân)")
+    n3 = d.rect(sys_cx, 500, 260, 70, "Kiểm tra tồn kho theo ngày\n(FR-CT-02)")
+    n4 = d.rect(sys_cx, 630, 260, 90, "Tính khoảng cách, chọn đối tác\ngiao vận theo bán kính 20km (BRU-05)")
+    n5 = d.rect(sys_cx, 780, 260, 90, "Tính tiền thuê (BRU-02) và\nphí ship (BRU-05)")
+    n6 = d.rect(sys_cx, 930, 260, 70, "Tính tiền cọc theo BRU-01")
+    n7 = d.rect(cus_cx, 1060, 260, 70, "Thanh toán cọc qua mã QR\n(UC-10)")
 
-    dec_x = LANE_STAFF_X + (LANE_STAFF_W - 260) // 2
-    n10 = d.diamond(dec_x, 1390, 260, 110, "Hình thức nhận\n= giao vận?")
+    dec_y = 1190
+    dec = d.diamond(sys_cx - 20, dec_y, 300, 150,
+                     "Sản phẩm/ngày còn khả dụng\nkhi nhận webhook? (BRU-07)")
 
-    yes_x = LANE_STAFF_X + 30
-    no_x = LANE_STAFF_X + LANE_STAFF_W - 30 - 230
-    n_yes = d.rect(yes_x, 1560, 230, 90, "Gọi API Green SM tạo yêu cầu\ngiao hàng (FR-TTGV-03)")
-    n_no = d.rect(no_x, 1560, 230, 90, "Bàn giao trực tiếp tại quầy")
+    n_xacnhan = d.rect(sys_cx, dec_y + 150 + 60, 260, 70, "Xác nhận thanh toán")
+    n_taodon = d.rect(sys_cx, dec_y + 150 + 60 + 70 + 50, 260, 80, "Tạo đơn thuê trạng thái Pending")
 
-    n11 = d.rect(staff_cx, 1710, 260, 70, "Xuất kho, cập nhật\nHộp game = Rented")
+    REJECT_X = LANE_STAFF_X + LANE_W + 60
+    n_reject = d.rect(REJECT_X, dec_y, 230, 90, "Hoàn tiền vào\nVí điện tử nội bộ")
+    n_reject_stop = d.final_node(REJECT_X + (230 - 34) // 2, dec_y + 90 + 50)
 
-    stop_x = staff_cx + (260 - 30) // 2
-    n_stop = d.final_node(stop_x, 1840)
+    staff_y0 = dec_y + 150 + 60 + 70 + 50 + 80 + 60
+    n8 = d.rect(staff_cx, staff_y0, 260, 70, "Xác nhận đơn thuê (UC-05)")
+    n9 = d.rect(staff_cx, staff_y0 + 70 + 50, 260, 90,
+                "Gọi API đối tác giao vận đã chọn\ntạo yêu cầu giao hàng (FR-TTGV-03)")
+    n10 = d.rect(staff_cx, staff_y0 + 70 + 50 + 90 + 50, 260, 70, "Bàn giao sản phẩm cho shipper")
+    n11 = d.rect(staff_cx, staff_y0 + 70 + 50 + 90 + 50 + 70 + 50, 260, 70, "Cập nhật Hộp game = Rented")
 
-    LANE_BOTTOM = 1840 + 34 + 50
+    stop_y = staff_y0 + 70 + 50 + 90 + 50 + 70 + 50 + 70 + 60
+    n_stop = d.final_node(staff_cx + (260 - 34) // 2, stop_y)
 
-    d.lane_bg(LANE_CUS_X, TOP, LANE_CUS_W, LANE_BOTTOM - TOP, "Customer")
-    d.lane_bg(LANE_SYS_X, TOP, LANE_SYS_W, LANE_BOTTOM - TOP, "Hệ thống")
-    d.lane_bg(LANE_STAFF_X, TOP, LANE_STAFF_W, LANE_BOTTOM - TOP, "Staff")
+    LANE_BOTTOM = max(stop_y + 34 + 50, dec_y + 90 + 50 + 34 + 50)
+
+    d.lane_bg(LANE_CUS_X, TOP, LANE_W, LANE_BOTTOM - TOP, "Customer")
+    d.lane_bg(LANE_SYS_X, TOP, LANE_W, LANE_BOTTOM - TOP, "Hệ thống")
+    d.lane_bg(LANE_STAFF_X, TOP, LANE_W, LANE_BOTTOM - TOP, "Staff")
 
     d.plain_edge(n_start, n1)
     d.plain_edge(n1, n2)
@@ -219,24 +228,30 @@ def build_activity_dathue():
     d.plain_edge(n4, n5)
     d.plain_edge(n5, n6)
     d.plain_edge(n6, n7)
-    d.plain_edge(n7, n8)
+    d.plain_edge(n7, dec)
+    d.plain_edge(dec, n_xacnhan, exitX=0.5, exitY=1, entryX=0.5, entryY=0)
+    d.branch_label(sys_cx - 20, dec_y, 300, 150, 0.4, "Có")
+    d.plain_edge(dec, n_reject, exitX=1, exitY=0.5, entryX=0, entryY=0.5)
+    d.branch_label(sys_cx - 20, dec_y, 300, 150, 1.0, "Không", below=False, w=90)
+    d.plain_edge(n_reject, n_reject_stop)
+    d.plain_edge(n_xacnhan, n_taodon)
+    d.plain_edge(n_taodon, n8, exitX=0.5, exitY=1, entryX=0.5, entryY=0)
     d.plain_edge(n8, n9)
     d.plain_edge(n9, n10)
-    d.plain_edge(n10, n_yes, exitX=0.3, exitY=1, entryX=0.5, entryY=0)
-    d.plain_edge(n10, n_no, exitX=0.7, exitY=1, entryX=0.5, entryY=0)
-    d.branch_label(dec_x, 1390, 260, 110, 0.3, "Có")
-    d.branch_label(dec_x, 1390, 260, 110, 0.7, "Không")
-    d.plain_edge(n_yes, n11, exitX=0.5, exitY=1, entryX=0.25, entryY=0)
-    d.plain_edge(n_no, n11, exitX=0.5, exitY=1, entryX=0.75, entryY=0)
+    d.plain_edge(n10, n11)
     d.plain_edge(n11, n_stop)
 
-    d.save("srs_3_6_activity_dathue.drawio", LANE_STAFF_X + LANE_STAFF_W + 40, LANE_BOTTOM + 40)
+    d.save("srs_3_6_activity_dathue.drawio", REJECT_X + 230 + 40, LANE_BOTTOM + 40)
 
 
 # ===========================================================================
 # Hinh 3.5 - Activity Diagram (Swimlane): luong tra hang & kiem ke
 # ===========================================================================
 def build_activity_trahang():
+    """Hinh 3.5 - phai khop dung PlantUML trong fill_srs.py (dong ~850-879).
+    Khong con nhanh 'tu mang tra / goi giao van' (SRS 1.3+: giao van bat buoc
+    ca 2 chieu) - chi con 1 duong thang qua 4 lane, ket thuc bang quyet dinh
+    con thieu tien hay khong (BRU-06)."""
     d = Diagram("Hinh 3.5 - Activity luong tra hang & kiem ke", "srs-3-6-act-trahang")
 
     LANE_CUS_X, LANE_SYS_X, LANE_SHIP_X, LANE_STAFF_X = 40, 360, 680, 1000
@@ -249,27 +264,27 @@ def build_activity_trahang():
     staff_cx = LANE_STAFF_X + (LANE_W - 260) // 2
 
     n_start = d.circle(cus_cx + 115, 90, 30, filled=True, track_label="(start)")
-    n1 = d.rect(cus_cx, 220, 260, 90, "Đến hạn trả, chọn hình thức trả hàng\n(tự mang trả / gọi giao vận)")
+    n1 = d.rect(cus_cx, 220, 260, 90, "Đến hạn trả, xác nhận địa chỉ\nlấy hàng trả (mặc định = địa chỉ nhận)")
 
-    dec1 = d.diamond(230, 370, 260, 110, "Chọn\ngiao vận?")
+    y1 = 380
+    s1 = d.rect(sys_cx, y1, 260, 90, "Tính khoảng cách, chọn đối tác\ngiao vận theo bán kính 20km (BRU-05)")
+    s2 = d.rect(sys_cx, y1 + 90 + 50, 260, 70, "Tính phí ship chiều trả\n(BRU-05)")
+    s3 = d.rect(sys_cx, y1 + 90 + 50 + 70 + 50, 260, 90,
+                "Gọi API đối tác giao vận đã chọn\ntạo yêu cầu lấy hàng (FR-TTGV-04)")
 
-    y_s1 = 540
-    s1 = d.rect(sys_cx, y_s1, 260, 70, "Tính phí ship chiều trả\n(BRU-05)")
-    s2 = d.rect(sys_cx, y_s1 + 130, 260, 70, "Gọi API Green SM tạo yêu cầu\nlấy hàng (FR-TTGV-04)")
-    s3 = d.rect(ship_cx, y_s1 + 260, 260, 70, "Lấy hàng từ khách,\ngiao về quán")
+    y_ship = y1 + 90 + 50 + 70 + 50 + 90 + 60
+    n_ship = d.rect(ship_cx, y_ship, 260, 70, "Lấy hàng từ khách,\ngiao về kho")
 
-    nA = d.rect(cus_cx, y_s1, 260, 70, "Mang trả sản phẩm\ntại quầy")
+    y_kiemdem = y_ship + 70 + 60
+    n_kiemdem = d.rect(staff_cx, y_kiemdem, 260, 90, "Kiểm đếm linh kiện theo checklist\nđiện tử (UC-08)")
 
-    y_merge = y_s1 + 260 + 70 + 60
-    n_kiemdem = d.rect(staff_cx, y_merge, 260, 70, "Kiểm đếm linh kiện theo checklist\nđiện tử (UC-08)")
-
-    y2 = y_merge + 130
+    y2 = y_kiemdem + 90 + 60
     n2 = d.rect(sys_cx, y2, 260, 70, "Tính phạt trễ hạn / đền bù\n(BRU-03, BRU-04)")
-    n3 = d.rect(sys_cx, y2 + 130, 260, 70, "Trừ phí ship thực tế\nhai chiều (FR-TTGV-08)")
-    n4 = d.rect(sys_cx, y2 + 260, 260, 70, "Tính số tiền hoàn cọc\ncuối cùng")
-    n5 = d.rect(staff_cx, y2 + 390, 260, 70, "Xác nhận hoàn cọc\n(UC-07)")
+    n3 = d.rect(sys_cx, y2 + 70 + 50, 260, 70, "Trừ phí ship thực tế\nhai chiều (FR-TTGV-08)")
+    n4 = d.rect(sys_cx, y2 + (70 + 50) * 2, 260, 70, "Tính số tiền hoàn cọc\ncuối cùng")
+    n5 = d.rect(staff_cx, y2 + (70 + 50) * 3, 260, 70, "Xác nhận hoàn cọc\n(UC-07)")
 
-    y_dec2 = y2 + 520
+    y_dec2 = y2 + (70 + 50) * 3 + 70 + 60
     dec2_x = LANE_SYS_X + (LANE_W + LANE_W - 260) // 2
     dec2 = d.diamond(dec2_x, y_dec2, 260, 110, "Còn thiếu\ntiền?")
 
@@ -277,33 +292,29 @@ def build_activity_trahang():
     bYes_x = LANE_SYS_X + 30
     bNo_x = LANE_SHIP_X + LANE_W - 30 - 260
     bYes = d.rect(bYes_x, y_b2, 260, 70, "Sinh mã QR\nthu thêm (UC-10)")
-    bNo = d.rect(bNo_x, y_b2, 260, 70, "Hoàn tiền còn lại\ncho khách")
+    bNo = d.rect(bNo_x, y_b2, 260, 90, "Cộng tiền hoàn cọc vào\nVí điện tử nội bộ của khách (BRU-06)")
 
     stop_cx = (bYes_x + bNo_x + 260) / 2 - 15
-    n_stop = d.final_node(stop_cx, y_b2 + 70 + 60)
+    n_stop = d.final_node(stop_cx, y_b2 + 90 + 60)
 
-    LANE_BOTTOM = y_b2 + 70 + 60 + 34 + 50
+    LANE_BOTTOM = y_b2 + 90 + 60 + 34 + 50
 
     d.lane_bg(LANE_CUS_X, TOP, LANE_W, LANE_BOTTOM - TOP, "Customer")
     d.lane_bg(LANE_SYS_X, TOP, LANE_W, LANE_BOTTOM - TOP, "Hệ thống")
-    d.lane_bg(LANE_SHIP_X, TOP, LANE_W, LANE_BOTTOM - TOP, "Green SM")
+    d.lane_bg(LANE_SHIP_X, TOP, LANE_W, LANE_BOTTOM - TOP, "Đối tác giao vận")
     d.lane_bg(LANE_STAFF_X, TOP, LANE_W, LANE_BOTTOM - TOP, "Staff")
 
     d.plain_edge(n_start, n1)
-    d.plain_edge(n1, dec1)
-    d.plain_edge(dec1, s1, exitX=0.7, exitY=1, entryX=0.5, entryY=0)
-    d.plain_edge(dec1, nA, exitX=0.3, exitY=1, entryX=0.5, entryY=0)
-    d.branch_label(230, 370, 260, 110, 0.7, "Có")
-    d.branch_label(230, 370, 260, 110, 0.3, "Không")
+    d.plain_edge(n1, s1, exitX=0.5, exitY=1, entryX=0.5, entryY=0)
     d.plain_edge(s1, s2)
     d.plain_edge(s2, s3)
-    d.plain_edge(s3, n_kiemdem, exitX=0.5, exitY=1, entryX=0.7, entryY=0)
-    d.plain_edge(nA, n_kiemdem, exitX=0.5, exitY=1, entryX=0.3, entryY=0)
-    d.plain_edge(n_kiemdem, n2)
+    d.plain_edge(s3, n_ship, exitX=0.5, exitY=1, entryX=0.5, entryY=0)
+    d.plain_edge(n_ship, n_kiemdem, exitX=0.5, exitY=1, entryX=0.5, entryY=0)
+    d.plain_edge(n_kiemdem, n2, exitX=0.5, exitY=1, entryX=0.5, entryY=0)
     d.plain_edge(n2, n3)
     d.plain_edge(n3, n4)
-    d.plain_edge(n4, n5)
-    d.plain_edge(n5, dec2)
+    d.plain_edge(n4, n5, exitX=0.5, exitY=1, entryX=0.5, entryY=0)
+    d.plain_edge(n5, dec2, exitX=0.5, exitY=1, entryX=0.5, entryY=0)
     d.plain_edge(dec2, bYes, exitX=0.2, exitY=1, entryX=0.5, entryY=0)
     d.plain_edge(dec2, bNo, exitX=0.8, exitY=1, entryX=0.5, entryY=0)
     d.branch_label(dec2_x, y_dec2, 260, 110, 0.2, "Có")
@@ -386,6 +397,8 @@ def build_state_donthue():
 # Hinh 3.7 - State Machine: Vong doi Hop game vat ly
 # ===========================================================================
 def build_state_hopgame():
+    """Hinh 3.7 - phai khop dung PlantUML trong fill_srs.py (dong ~894-905),
+    gom ca nhanh Available -> Sold -> [*] (ban hang) con thieu o ban truoc."""
     d = Diagram("Hinh 3.7 - State Machine Hop game", "srs-3-6-state-hopgame")
 
     BOX_W, BOX_H, GAP = 200, 80, 280
@@ -405,6 +418,12 @@ def build_state_hopgame():
     rented = d.rect(rented_x, y_main, BOX_W, BOX_H, "Rented")
     checking = d.rect(checking_x, y_main, BOX_W, BOX_H, "Checking")
     damaged = d.rect(damaged_x, y_main, BOX_W, BOX_H, "Damaged")
+
+    # Sold: nhanh ban hang, dat phia duoi Available, du xa de khong de len 3 "hang"
+    # nhan cua duong quay-ve-Available (row1/row2/row3, y 428-594) ngay ben duoi.
+    sold_y = y_main + BOX_H + 500
+    sold = d.rect(available_x, sold_y, BOX_W, BOX_H, "Sold")
+    n_final_sold = d.final_node(available_x + (BOX_W - 34) // 2, sold_y + BOX_H + 60)
 
     def gap_label(left_box_right, right_box_left, text):
         mid = (left_box_right + right_box_left) / 2
@@ -426,6 +445,12 @@ def build_state_hopgame():
     d.plain_edge(checking, damaged)
     gap_label(checking_x + BOX_W, damaged_x, "Thiếu/hư hỏng\nlinh kiện")
 
+    d.plain_edge(available, sold, exitX=0.5, exitY=1, entryX=0.5, entryY=0)
+    d.text_label(available_x + BOX_W + 10, sold_y - 120, 260, 40,
+                 "Khách mua, thanh toán\nthành công (UC-03)")
+    d.plain_edge(sold, n_final_sold)
+    d.text_label(available_x + BOX_W + 10, sold_y + BOX_H + 10, 240, 26, "Rời khỏi kho vĩnh viễn")
+
     # 3 duong quay ve Available, xep thanh 3 "hang" rieng phia duoi hang chinh,
     # cang xuat phat tu cot cang xa Available thi dat o hang cang sau de khong de/cat nhau.
     row1_y = y_main + BOX_H + 80    # reserved -> available (gan nhat)
@@ -445,81 +470,120 @@ def build_state_hopgame():
     return_edge(damaged, damaged_x, 0.95, row3_y, "Đã xử lý đền bù (BRU-04)")
 
     page_w = damaged_x + BOX_W + 60
-    page_h = row3_y + 40 + 40
+    page_h = sold_y + BOX_H + 60 + 34 + 60
     d.save("srs_3_6_state_hopgame.drawio", page_w, page_h)
 
 
 # ===========================================================================
-# Sequence diagram helpers
+# Sequence diagrams
 # ===========================================================================
-def build_sequence(filename, diagram_id, name, participants, messages, lifeline_bottom, alt=None):
-    """participants: list (x_center, label). messages: list (src_idx, dst_idx, label, dashed, y)."""
-    d = Diagram(name, diagram_id)
-    HEAD_W, HEAD_H = 240, 50
-    HEAD_Y = 40
+def build_seq_datcoc():
+    """Hinh 3.8 - phai khop dung PlantUML trong fill_srs.py (dong ~908-925),
+    gom ca khung alt/else (BRU-07) con thieu o ban truoc."""
+    d = Diagram("Hinh 3.8 - SSD Dat coc", "srs-3-6-seq-datcoc")
+    HEAD_W, HEAD_H, HEAD_Y = 240, 50, 40
+    participants = [(220, "Customer"), (700, "Hệ thống BoardVerse"), (1180, "MoMo\n(giả định)")]
+
+    alt_y, alt_h = 760, 260
+    lifeline_bottom = alt_y + alt_h + 60
 
     for cx, label in participants:
         hx = cx - HEAD_W // 2
         d.rect(hx, HEAD_Y, HEAD_W, HEAD_H, label, bold=True)
         d.vline(cx, HEAD_Y + HEAD_H, lifeline_bottom - (HEAD_Y + HEAD_H), dashed=True)
 
-    if alt:
-        ax, ay, aw, ah, alt_title, else_y, else_label = alt
-        nid = d.new_id()
-        style = ("rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#000000;"
-                 "verticalAlign=top;align=left;spacingLeft=6;spacingTop=4;fontSize=11;")
-        d.cells.insert(0, f'<mxCell id="{nid}" value="{esc(alt_title)}" style="{style}" vertex="1" parent="1">'
-                   f'<mxGeometry x="{ax}" y="{ay}" width="{aw}" height="{ah}" as="geometry"/></mxCell>')
-        d.boxes.append((ax, ay, aw, 26, alt_title))
-        nid2 = d.new_id()
-        d.add(f'<mxCell id="{nid2}" style="endArrow=none;html=1;strokeColor=#000000;dashed=1;" edge="1" parent="1">'
-              f'<mxGeometry relative="1" as="geometry">'
-              f'<mxPoint x="{ax}" y="{else_y}" as="sourcePoint"/>'
-              f'<mxPoint x="{ax + aw}" y="{else_y}" as="targetPoint"/></mxGeometry></mxCell>')
-        d.text_label(ax + 6, else_y + 2, 120, 20, else_label, align="left")
-
-    for src_i, dst_i, label, dashed, y in messages:
-        x1 = participants[src_i][0]
-        x2 = participants[dst_i][0]
-        d.plain_line(x1, y, x2, y, dashed=dashed)
-        lo, hi = min(x1, x2), max(x1, x2)
-        margin = 20
-        d.text_label(lo + margin, y - 30, (hi - lo) - 2 * margin, 24, label, fontsize=11)
-
-    page_w = max(cx for cx, _ in participants) + HEAD_W // 2 + 60
-    page_h = lifeline_bottom + 40
-    d.save(filename, page_w, page_h)
-
-
-def build_seq_datcoc():
-    participants = [(220, "Customer"), (700, "Hệ thống BoardVerse"), (1180, "MoMo\n(giả định)")]
-    msgs = [
-        (0, 1, "chonSanPham(ngay_bat_dau, ngay_ket_thuc, hinh_thuc_nhan)", False, 150),
+    msgs_before = [
+        (0, 1, "chonSanPham(ngay_bat_dau, ngay_ket_thuc, diaChiNhan)", False, 150),
         (1, 0, "traVe(tienThue, phiShip, tienCoc)", True, 250),
         (0, 1, "xacNhanThanhToanCoc()", False, 350),
         (1, 2, "yeuCauSinhMaQR(maDon, tienCoc)", False, 450),
         (2, 1, "traVe(maQR)", True, 550),
         (1, 0, "hienThiMaQR(maQR)", True, 650),
-        (2, 1, "webhookThanhToan(maDon, thanhCong)", False, 750),
-        (1, 0, "xacNhanDonThue(maDon)", True, 850),
+        (2, 1, "webhookThanhToan(maDon, thanhCong)", False, 710),
     ]
-    build_sequence("srs_3_6_seq_datcoc.drawio", "srs-3-6-seq-datcoc", "Hinh 3.8 - SSD Dat coc",
-                    participants, msgs, lifeline_bottom=930)
+    for src_i, dst_i, label, dashed, y in msgs_before:
+        x1, x2 = participants[src_i][0], participants[dst_i][0]
+        d.plain_line(x1, y, x2, y, dashed=dashed)
+        lo, hi = min(x1, x2), max(x1, x2)
+        d.text_label(lo + 20, y - 30, (hi - lo) - 40, 24, label, fontsize=11)
+
+    ax, ay, aw, ah = 160, alt_y, 1100, alt_h
+    nid = d.new_id()
+    style = ("rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#000000;"
+             "verticalAlign=top;align=left;spacingLeft=6;spacingTop=4;fontSize=11;")
+    d.cells.insert(0, f'<mxCell id="{nid}" value="{esc("alt  [sanPham/ngày còn khả dụng (BRU-07)]")}" '
+               f'style="{style}" vertex="1" parent="1">'
+               f'<mxGeometry x="{ax}" y="{ay}" width="{aw}" height="{ah}" as="geometry"/></mxCell>')
+    d.boxes.append((ax, ay, aw, 26, "alt frame title"))
+    else_y = ay + ah / 2
+    nid2 = d.new_id()
+    d.add(f'<mxCell id="{nid2}" style="endArrow=none;html=1;strokeColor=#000000;dashed=1;" edge="1" parent="1">'
+          f'<mxGeometry relative="1" as="geometry">'
+          f'<mxPoint x="{ax}" y="{else_y}" as="sourcePoint"/>'
+          f'<mxPoint x="{ax + aw}" y="{else_y}" as="targetPoint"/></mxGeometry></mxCell>')
+    d.text_label(ax + 6, else_y + 2, 320, 20, "[else — đã bị đơn khác chiếm trước]", align="left")
+
+    x1, x2 = participants[1][0], participants[0][0]
+    y_if = ay + 70
+    d.plain_line(x1, y_if, x2, y_if, dashed=True)
+    d.text_label(min(x1, x2) + 20, y_if - 30, abs(x2 - x1) - 40, 24, "xacNhanDonThue(maDon)", fontsize=11)
+
+    y_else = else_y + 70
+    d.plain_line(x1, y_else, x2, y_else, dashed=True)
+    d.text_label(min(x1, x2) + 20, y_else - 30, abs(x2 - x1) - 40, 24, "hoanTienVaoViDienTu(soTien)", fontsize=11)
+
+    page_w = max(cx for cx, _ in participants) + HEAD_W // 2 + 60
+    page_h = lifeline_bottom + 40
+    d.save("srs_3_6_seq_datcoc.drawio", page_w, page_h)
 
 
 def build_seq_giaovan():
-    participants = [(220, "Customer"), (700, "Hệ thống BoardVerse"), (1180, "Green SM\n(giả định)")]
-    msgs = [
-        (0, 1, "chonHinhThucGiaoVan(chieu, khuVuc)", False, 150),
-        (1, 0, "traVe(phiShip)", True, 250),
-        (1, 2, "taoYeuCauGiaoNhan(maDon, chieu, khuVuc)", False, 350),
-        (2, 1, "traVe(maVanDon)", True, 450),
-        (1, 0, "xacNhanDaTaoYeuCau(maVanDon)", True, 550),
-        (2, 1, "webhookCapNhatTrangThai(maVanDon, trangThai)", False, 650),
-        (1, 0, "capNhatTrangThaiVanChuyen(trangThai)", True, 750),
-    ]
-    build_sequence("srs_3_6_seq_giaovan.drawio", "srs-3-6-seq-giaovan", "Hinh 3.10 - SSD Giao van 2 chieu",
-                    participants, msgs, lifeline_bottom=830)
+    """Hinh 3.10 - phai khop dung PlantUML trong fill_srs.py (dong ~944-957),
+    gom ca self-message Sys->Sys (tinhKhoangCach/chonDoiTac) con thieu o ban truoc."""
+    d = Diagram("Hinh 3.10 - SSD Giao van 2 chieu", "srs-3-6-seq-giaovan")
+    HEAD_W, HEAD_H, HEAD_Y = 240, 50, 40
+    participants = [(220, "Customer"), (700, "Hệ thống BoardVerse"), (1180, "Green SM / Shopee Express\n(giả định)")]
+    lifeline_bottom = 980
+
+    for cx, label in participants:
+        hx = cx - HEAD_W // 2
+        d.rect(hx, HEAD_Y, HEAD_W, HEAD_H, label, bold=True)
+        d.vline(cx, HEAD_Y + HEAD_H, lifeline_bottom - (HEAD_Y + HEAD_H), dashed=True)
+
+    sys_x = participants[1][0]
+
+    def msg(src_i, dst_i, label, dashed, y):
+        x1, x2 = participants[src_i][0], participants[dst_i][0]
+        d.plain_line(x1, y, x2, y, dashed=dashed)
+        lo, hi = min(x1, x2), max(x1, x2)
+        d.text_label(lo + 20, y - 30, (hi - lo) - 40, 24, label, fontsize=11)
+
+    def self_msg(idx, label, y, loop_w=160, loop_h=50):
+        """Canh tu-goi-chinh-minh (Sys -> Sys): ve bang 3 doan thang noi diem
+        (x,y) -> (x+loop_w,y) -> (x+loop_w,y+loop_h) -> (x,y+loop_h), mui ten o cuoi."""
+        x = participants[idx][0]
+        nid = d.new_id()
+        style = "endArrow=block;html=1;strokeColor=#000000;rounded=0;"
+        d.add(f'<mxCell id="{nid}" style="{style}" edge="1" parent="1">'
+              f'<mxGeometry relative="1" as="geometry">'
+              f'<mxPoint x="{x}" y="{y}" as="sourcePoint"/>'
+              f'<mxPoint x="{x}" y="{y + loop_h}" as="targetPoint"/>'
+              f'<Array as="points"><mxPoint x="{x + loop_w}" y="{y}"/><mxPoint x="{x + loop_w}" y="{y + loop_h}"/></Array>'
+              f'</mxGeometry></mxCell>')
+        d.text_label(x + 20, y + loop_h / 2 - 12, loop_w + 60, 24, label, fontsize=11, align="left")
+
+    msg(0, 1, "xacNhanDiaChi(chieu, diaChi)", False, 150)
+    self_msg(1, "tinhKhoangCach(); chonDoiTac(khoangCach)", 220)
+    msg(1, 0, "traVe(doiTacDaChon, phiShip)", True, 370)
+    msg(1, 2, "taoYeuCauGiaoNhan(maDon, chieu, diaChi)", False, 470)
+    msg(2, 1, "traVe(maVanDon)", True, 570)
+    msg(1, 0, "xacNhanDaTaoYeuCau(maVanDon)", True, 670)
+    msg(2, 1, "webhookCapNhatTrangThai(maVanDon, trangThai)", False, 770)
+    msg(1, 0, "capNhatTrangThaiVanChuyen(trangThai)", True, 870)
+
+    page_w = max(cx for cx, _ in participants) + HEAD_W // 2 + 60
+    page_h = lifeline_bottom + 40
+    d.save("srs_3_6_seq_giaovan.drawio", page_w, page_h)
 
 
 def build_seq_hoancoc():
