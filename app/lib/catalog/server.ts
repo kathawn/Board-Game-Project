@@ -14,6 +14,9 @@ export interface CatalogStore {
   getMany(slugs: string[]): Promise<Map<string, Product>>;
   /** Danh mục (danhMuc) hiện có, đã sắp xếp. */
   categories(): Promise<string[]>;
+  /** Top sản phẩm bán chạy nhất (tổng số hộp ở các đơn MUA chưa huỷ), giảm dần. Sản phẩm chưa có đơn nào xếp sau cùng
+   * theo thứ tự tên; luôn trả đủ `limit` nếu danh mục có đủ sản phẩm. */
+  topSelling(limit: number): Promise<Product[]>;
 }
 
 /** Sản phẩm Admin vừa tạo chưa có ảnh (UC-15 chưa có upload) → dùng ảnh mặc định. */
@@ -32,6 +35,10 @@ function createMemoryCatalog(): CatalogStore {
     },
     async categories() {
       return Array.from(new Set(PRODUCTS.map((p) => p.danhMuc))).sort();
+    },
+    async topSelling(limit) {
+      // Bộ nhớ không có đơn hàng → chưa có số liệu bán, lấy theo thứ tự danh mục.
+      return PRODUCTS.slice(0, limit);
     },
   };
 }
@@ -96,6 +103,23 @@ function createPrismaCatalog(getDb: () => PrismaClient): CatalogStore {
     async categories() {
       const rows = await getDb().sanPham.findMany({ distinct: ["danhMuc"], select: { danhMuc: true } });
       return rows.map((r) => r.danhMuc).sort();
+    },
+    async topSelling(limit) {
+      const db = getDb();
+      const sold = await db.chiTietDonHang.groupBy({
+        by: ["sanPhamId"],
+        where: { donHang: { loai: "Ban", trangThai: { not: "Cancelled" } } },
+        _sum: { soLuong: true },
+      });
+      const daBan = new Map(sold.map((r) => [r.sanPhamId, r._sum.soLuong ?? 0]));
+      const rows = (await db.sanPham.findMany({ include, orderBy: { ten: "asc" } })) as unknown as Row[];
+      const ton = await demTon(db, rows.map((r) => r.id));
+      // sort ổn định: bằng số bán thì giữ thứ tự tên (đã orderBy ten asc).
+      return rows
+        .map((r) => ({ r, n: daBan.get(r.id) ?? 0 }))
+        .sort((a, b) => b.n - a.n)
+        .slice(0, limit)
+        .map(({ r }) => toProduct(r, ton));
     },
   };
 }

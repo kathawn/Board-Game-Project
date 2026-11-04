@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 export function Footer() {
   return (
     <footer className="relative overflow-hidden bg-wine-deep px-5 pb-8 pt-20 text-center text-cream sm:px-8">
@@ -25,9 +27,13 @@ export function Footer() {
             Hỗ trợ
           </strong>
           <p className="text-[13px] leading-relaxed text-cream/75">
-            Hướng dẫn đặt thuê
+            <Link href="/huong-dan-dat-thue" className="transition-colors hover:text-gold">
+              Hướng dẫn đặt thuê
+            </Link>
             <br />
-            Chính sách hoàn cọc
+            <Link href="/chinh-sach-hoan-coc" className="transition-colors hover:text-gold">
+              Chính sách hoàn cọc
+            </Link>
           </p>
         </div>
         <div className="text-left sm:text-right">
@@ -51,7 +57,7 @@ export function Footer() {
 
       <div className="relative z-10 mx-auto flex max-w-[1240px] flex-wrap justify-between gap-2 border-t border-cream/10 pt-6 text-[11px] text-cream/45">
         <span>© 2026 BoardVerse — Hộ kinh doanh BoardVerse (giả định)</span>
-        <span>Quận 1, TP. Hồ Chí Minh</span>
+        <span>Cầu Giấy, Hà Nội</span>
       </div>
     </footer>
   );

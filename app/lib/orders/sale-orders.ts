@@ -12,6 +12,9 @@ export type SaleStage = (typeof SALE_STAGES)[number];
 export interface SaleOrderView {
   id: string;
   email: string;
+  /** Họ tên + SĐT người nhận (từ hồ sơ khách) — in lên phiếu dán đơn. */
+  hoTen?: string;
+  sdt?: string;
   ngayTao: string;
   diaChiNhan: string;
   stage: SaleStage;
@@ -30,7 +33,7 @@ export interface SaleOrderPage {
 }
 
 const include = {
-  khachHang: { select: { email: true } },
+  khachHang: { select: { email: true, hoTen: true, sdt: true } },
   chiTiet: { include: { sanPham: { select: { ten: true } }, giaoVan: true } },
 } as const;
 
@@ -82,6 +85,8 @@ export async function searchSaleOrders(opts: { q: string; stage: SaleStage; page
     return {
       id: r.maDon,
       email: r.khachHang.email,
+      hoTen: r.khachHang.hoTen || undefined,
+      sdt: r.khachHang.sdt || undefined,
       ngayTao: toIso(r.ngayTao),
       diaChiNhan: r.chiTiet[0]?.diaChiNhan ?? "",
       stage: stageOf(r.trangThai, shipments.length > 0) ?? opts.stage,

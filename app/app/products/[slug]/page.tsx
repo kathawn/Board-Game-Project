@@ -154,7 +154,7 @@ async function ProductDetail({
                 />
                 <div className="relative">
                   <span className="mb-3 inline-block text-xs font-semibold uppercase tracking-[0.18em] text-gold">
-                    Chính sách đền bù — BRU-04
+                    Chính sách đền bù
                   </span>
                   <h2 className="mb-4 font-heading text-2xl leading-tight">
                     Checklist linh kiện đi kèm

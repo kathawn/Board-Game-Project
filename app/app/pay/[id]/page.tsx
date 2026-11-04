@@ -254,8 +254,8 @@ export default function PayPage({ params }: { params: Promise<{ id: string }> })
                 </div>
                 <p className="flex items-start gap-1.5">
                   <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-forest" />
-                  Hệ thống chỉ xác nhận khi nhận webhook từ cổng thanh toán, không có nút xác nhận thủ công
-                  (FR-TTGV-07). Trang này tự cập nhật khi có kết quả.
+                  Hệ thống chỉ xác nhận khi nhận webhook từ cổng thanh toán, không có nút xác nhận thủ công.
+                  Trang này tự cập nhật khi có kết quả.
                 </p>
               </div>
 
@@ -338,8 +338,8 @@ export default function PayPage({ params }: { params: Promise<{ id: string }> })
             <p>
               <span className="font-semibold text-ink">{payment.dongHetHang.join(", ")}</span>{" "}
               {laMua
-                ? "không còn đủ số lượng bạn chọn vì khách khác đã thanh toán trước. Hệ thống chỉ bán trọn số lượng đã chọn (không bán một phần) và ưu tiên theo thời điểm thanh toán thành công, không giữ chỗ trước (BRU-07), nên đơn của bạn không được tạo."
-                : "đã được một khách khác thanh toán thành công trước bạn. Hệ thống ưu tiên theo thời điểm thanh toán thành công, không giữ chỗ trước (BRU-07), nên đơn của bạn không được tạo."}
+                ? "không còn đủ số lượng bạn chọn vì khách khác đã thanh toán trước. Hệ thống chỉ bán trọn số lượng đã chọn (không bán một phần) và ưu tiên theo thời điểm thanh toán thành công, không giữ chỗ trước, nên đơn của bạn không được tạo."
+                : "đã được một khách khác thanh toán thành công trước bạn. Hệ thống ưu tiên theo thời điểm thanh toán thành công, không giữ chỗ trước, nên đơn của bạn không được tạo."}
             </p>
             <div className="mt-4 flex items-center justify-center gap-3 rounded bg-cream px-4 py-3 text-left">
               <Wallet className="h-5 w-5 shrink-0 text-wine" />
@@ -380,7 +380,7 @@ export default function PayPage({ params }: { params: Promise<{ id: string }> })
                 <>
                   Đã nhận <span className="font-semibold text-ink">{formatVND(payment.soTien)}</span> tiền cọc. Đơn thuê{" "}
                   <span className="font-semibold text-ink">{payment.orderId}</span> đã được tạo ở trạng thái &quot;Chờ
-                  xác nhận&quot; và đang chờ nhân viên xác nhận (UC-05).
+                  xác nhận&quot; và đang chờ nhân viên xác nhận.
                 </>
               )}
             </p>
@@ -390,8 +390,8 @@ export default function PayPage({ params }: { params: Promise<{ id: string }> })
                 <p className="text-xs">
                   <span className="font-semibold text-ink">{payment.dongHetHang.join(", ")}</span>{" "}
                   {laMua
-                    ? "không còn đủ số lượng bạn chọn (khách khác thanh toán trước, BRU-07; hệ thống không bán một phần số lượng) nên không nằm trong đơn."
-                    : "đã có khách khác thanh toán trước (BRU-07) nên không nằm trong đơn."}{" "}
+                    ? "không còn đủ số lượng bạn chọn (khách khác thanh toán trước; hệ thống không bán một phần số lượng) nên không nằm trong đơn."
+                    : "đã có khách khác thanh toán trước nên không nằm trong đơn."}{" "}
                   Đã hoàn{" "}
                   <span className="font-semibold text-ink">{formatVND(payment.soTienHoan)}</span> vào Ví điện tử nội
                   bộ (số dư: <span className="font-semibold text-ink">{formatVND(soDuVi)}</span>).
@@ -413,7 +413,7 @@ export default function PayPage({ params }: { params: Promise<{ id: string }> })
             }
           >
             <p>
-              Bạn đã huỷ trước khi thanh toán (FR-BH-06). Mã QR này không còn hiệu lực, giỏ hàng vẫn được giữ
+              Bạn đã huỷ trước khi thanh toán. Mã QR này không còn hiệu lực, giỏ hàng vẫn được giữ
               nguyên và bạn chưa bị trừ tiền.
             </p>
           </KetQua>

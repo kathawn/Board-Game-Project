@@ -587,7 +587,7 @@ export function createReturnService(deps: { getDb: () => PrismaClient; now?: () 
                 thanhToanId: coc.id,
                 maGiaoDich: `HOANCOC-${maDon}`,
                 soTien: quyetToan.soTienHoan,
-                lyDo: `Hoàn cọc đơn ${maDon} sau quyết toán (BRU-06)`,
+                lyDo: `Hoàn cọc đơn ${maDon} sau quyết toán`,
               });
             }
             await tx.donHang.update({ where: { id: order.id }, data: { trangThai: "Closed" } });

@@ -54,7 +54,7 @@ export default function MockGreenSmPage() {
       </p>
       <label style={{ fontSize: 14, display: "block", marginBottom: 16 }}>
         <input type="checkbox" checked={down} onChange={(e) => post({ action: "down", down: e.target.checked })} /> Giả lập
-        đối tác lỗi / không khả dụng (UC-06 luồng 2a, UC-11 luồng 4a)
+        đối tác lỗi / không khả dụng
       </label>
 
       {rows.length === 0 && <p style={{ color: "#666", fontSize: 14 }}>Chưa có vận đơn nào.</p>}

@@ -1,10 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { AlertTriangle, ChevronLeft, ChevronRight, MapPin, PackageCheck, Search, Truck } from "lucide-react";
+import { AlertTriangle, ChevronLeft, ChevronRight, Clock, MapPin, PackageCheck, Printer, Search, Truck } from "lucide-react";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { formatVND } from "@/lib/products";
+import { printLabels, rentalLabel } from "@/lib/rentals/label";
+import { homNayVN } from "@/lib/cart/paginate";
 import { staffFetch } from "@/lib/auth/staff-client";
 import type { RentalOrder, RentalOrderPage, RentalStage } from "@/lib/rentals/order-store";
 import { TEN_DOI_TAC, type TrangThaiVanChuyen } from "@/lib/shipping/types";
@@ -14,9 +16,9 @@ import { TEN_DOI_TAC, type TrangThaiVanChuyen } from "@/lib/shipping/types";
  * của đơn đang chọn nằm bên phải. Chưa có đăng nhập Staff riêng gắn vào trang này (UC-13 làm ở bước backend). */
 
 const TABS: { key: RentalStage; label: string; hint: string }[] = [
-  { key: "ChoXacNhan", label: "Chờ xác nhận", hint: "Đơn vừa thanh toán cọc, chờ Staff xác nhận đã thu cọc (UC-05)." },
-  { key: "ChoBanGiao", label: "Chờ bàn giao", hint: "Đơn đã xác nhận, chờ bàn giao hộp game cho giao vận (UC-06)." },
-  { key: "DangThue", label: "Đang thuê", hint: "Đơn đã bàn giao — theo dõi vận đơn hai chiều (UC-12). Đơn quá hạn xếp trước." },
+  { key: "ChoXacNhan", label: "Chờ xác nhận", hint: "Đơn vừa thanh toán cọc, chờ Staff xác nhận đã thu cọc." },
+  { key: "ChoBanGiao", label: "Chờ bàn giao", hint: "Đơn đã xác nhận, chờ bàn giao hộp game cho giao vận. In phiếu dán lên hộp trước khi bàn giao." },
+  { key: "DangThue", label: "Đang thuê", hint: "Đơn đã bàn giao — theo dõi vận đơn hai chiều. Đơn quá hạn xếp trước." },
 ];
 
 const TRANG_THAI_VC: Record<TrangThaiVanChuyen, { label: string; className: string }> = {
@@ -30,6 +32,17 @@ const card = "rounded bg-paper shadow-[0_20px_40px_-20px_rgba(42,31,26,0.2)]";
 const btnPrimary =
   "flex items-center justify-center gap-2 whitespace-nowrap bg-wine px-5 py-2.5 text-xs font-semibold uppercase tracking-wider text-paper transition-colors hover:bg-wine-deep disabled:opacity-60";
 
+/** Mức khẩn của đơn "Chờ bàn giao" theo ngày bắt đầu thuê sớm nhất: đã trễ lịch / hôm nay / ngày mai. */
+function mucGap(order: RentalOrder, today: string): { label: string; className: string } | null {
+  const start = order.lines.map((l) => l.startDate).filter(Boolean).sort()[0];
+  if (!start) return null;
+  const tomorrow = new Date(Date.parse(`${today}T00:00:00Z`) + 86_400_000).toISOString().slice(0, 10);
+  if (start < today) return { label: "Trễ lịch", className: "bg-destructive/15 text-destructive" };
+  if (start === today) return { label: "Giao hôm nay", className: "bg-destructive/15 text-destructive" };
+  if (start === tomorrow) return { label: "Giao ngày mai", className: "bg-gold/15 text-gold" };
+  return null;
+}
+
 function summary(order: RentalOrder): string {
   const first = order.lines[0]?.productName ?? "";
   return order.lines.length > 1 ? `${first} +${order.lines.length - 1} sản phẩm` : first;
@@ -40,6 +53,8 @@ export default function StaffRentalOrdersPage() {
   const [q, setQ] = useState("");
   const [qApplied, setQApplied] = useState("");
   const [page, setPage] = useState(1);
+  const [urgentOnly, setUrgentOnly] = useState(false);
+  const today = homNayVN();
   const [data, setData] = useState<RentalOrderPage | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
@@ -48,12 +63,13 @@ export default function StaffRentalOrdersPage() {
 
   const load = useCallback(async () => {
     const params = new URLSearchParams({ q: qApplied, stage, page: String(page) });
+    if (urgentOnly && stage === "ChoBanGiao") params.set("urgent", "1");
     const response = await staffFetch(`/api/staff/rental-orders?${params}`);
     const result: RentalOrderPage = await response.json();
     setData(result);
     // Giữ đơn đang chọn nếu còn trong trang; không thì chọn đơn đầu tiên (đơn cần xử lý trước).
     setSelectedId((cur) => (cur && result.orders.some((o) => o.id === cur) ? cur : (result.orders[0]?.id ?? null)));
-  }, [qApplied, stage, page]);
+  }, [qApplied, stage, page, urgentOnly]);
 
   useEffect(() => {
     (async () => {
@@ -145,6 +161,34 @@ export default function StaffRentalOrdersPage() {
                 />
               </label>
 
+              {stage === "ChoBanGiao" && data && (
+                <div className="mb-3 flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    aria-pressed={urgentOnly}
+                    onClick={() => {
+                      setUrgentOnly((v) => !v);
+                      setPage(1);
+                    }}
+                    className={`flex items-center gap-1.5 border px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider transition-colors ${
+                      urgentOnly ? "border-wine bg-wine text-paper" : "border-ink/25 text-ink hover:bg-ink/5"
+                    }`}
+                  >
+                    <Clock className="h-3.5 w-3.5" />
+                    Cần giao gấp ({data.soGap})
+                  </button>
+                  <button
+                    type="button"
+                    disabled={data.orders.length === 0}
+                    onClick={() => printLabels(data.orders.map(rentalLabel))}
+                    className="ml-auto flex items-center gap-1.5 border border-ink/25 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-ink transition-colors hover:bg-ink hover:text-cream disabled:opacity-40"
+                  >
+                    <Printer className="h-3.5 w-3.5" />
+                    In {data.orders.length} phiếu trong trang
+                  </button>
+                </div>
+              )}
+
               {/* Chiều cao cố định cho 8 dòng để đổi tab / trang không làm trang nhảy. */}
               <ul className="min-h-[512px] divide-y divide-cream">
                 {data?.orders.map((o) => (
@@ -159,6 +203,13 @@ export default function StaffRentalOrdersPage() {
                       <span className="min-w-0">
                         <span className="flex items-center gap-2">
                           <span className="text-sm font-semibold text-ink">{o.id}</span>
+                          {stage === "ChoBanGiao" && mucGap(o, today) && (
+                            <span
+                              className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${mucGap(o, today)!.className}`}
+                            >
+                              {mucGap(o, today)!.label}
+                            </span>
+                          )}
                           {o.trangThai === "Overdue" && (
                             <span className="rounded-full bg-destructive/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-destructive">
                               Quá hạn
@@ -317,6 +368,16 @@ export default function StaffRentalOrdersPage() {
                       >
                         <PackageCheck className="h-3.5 w-3.5" />
                         {busy === `confirm:${selected.id}` ? "Đang xác nhận..." : "Xác nhận đã thu cọc"}
+                      </button>
+                    )}
+                    {selected.trangThai === "Confirmed" && (
+                      <button
+                        type="button"
+                        onClick={() => printLabels([rentalLabel(selected)])}
+                        className="flex items-center justify-center gap-2 whitespace-nowrap border border-ink/25 px-5 py-2.5 text-xs font-semibold uppercase tracking-wider text-ink transition-colors hover:bg-ink hover:text-cream"
+                      >
+                        <Printer className="h-3.5 w-3.5" />
+                        In phiếu dán đơn
                       </button>
                     )}
                     {selected.trangThai === "Confirmed" && (

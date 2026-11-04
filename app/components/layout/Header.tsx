@@ -4,15 +4,27 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Menu as MenuPrimitive } from "@base-ui/react/menu";
-import { ShoppingCart, User, Settings, LogOut, Receipt, Menu, X, Wallet } from "lucide-react";
+import { ShoppingCart, User, Settings, LogOut, Receipt, Menu, X, Wallet, ShieldCheck } from "lucide-react";
 import { useCart } from "@/lib/cart/CartContext";
 
 const NAV_LINKS = [
-  { href: "/products", label: "Bộ sưu tập" },
+  { href: "/products", label: "Sản phẩm" },
   { href: "/#featured", label: "Sản phẩm nổi bật" },
-  { href: "/#occasions", label: "Phù hợp cho" },
   { href: "/#contact", label: "Liên hệ" },
 ];
+
+/** Khu vực nội bộ (/staff/**): dùng menu riêng của nhân viên, không có giỏ hàng và nút đăng nhập của khách. */
+const STAFF_LINKS = [
+  { href: "/staff/rental-orders", label: "Đơn thuê" },
+  { href: "/staff/sale-orders", label: "Đơn mua" },
+  { href: "/staff/returns", label: "Nhận hàng trả & kho" },
+];
+
+interface StaffMe {
+  hoTen: string;
+  email: string;
+  vaiTro: string;
+}
 
 export function Header() {
   const router = useRouter();
@@ -24,6 +36,9 @@ export function Header() {
   const setMenuOpen = (open: boolean) => setMenuOpenAt(open ? pathname : null);
   const { totalItems } = useCart();
   const [loggedIn, setLoggedIn] = useState<boolean | null>(null);
+  const isStaffArea = pathname.startsWith("/staff");
+  const isStaffLogin = pathname === "/staff/login";
+  const [staff, setStaff] = useState<StaffMe | null>(null);
 
   // Trang chủ có hero nền tối (bg-wine-deep) phía sau header trong suốt —
   // chữ phải sáng màu ở đó để không "chìm" vào nền; mọi trang khác nền sáng
@@ -37,10 +52,31 @@ export function Header() {
   }, []);
 
   useEffect(() => {
+    if (isStaffArea) return; // khu nội bộ dùng phiên nhân viên, không liên quan tài khoản khách
     fetch("/api/profile")
       .then((response) => setLoggedIn(response.ok))
       .catch(() => setLoggedIn(false));
-  }, []);
+  }, [isStaffArea]);
+
+  useEffect(() => {
+    if (!isStaffArea || isStaffLogin) return;
+    fetch("/api/staff/me")
+      .then((response) => (response.ok ? response.json() : null))
+      .then((data) => setStaff(data))
+      .catch(() => setStaff(null));
+  }, [isStaffArea, isStaffLogin]);
+
+  const handleStaffLogout = async () => {
+    await fetch("/api/staff/logout", { method: "POST" });
+    setStaff(null);
+    router.push("/staff/login");
+  };
+
+  const navLinks = isStaffArea
+    ? isStaffLogin
+      ? []
+      : [...STAFF_LINKS, ...(staff?.vaiTro === "Admin" ? [{ href: "/admin", label: "Quản trị" }] : [])]
+    : NAV_LINKS;
 
   const handleLogout = async () => {
     await fetch("/api/auth/logout", { method: "POST" });
@@ -59,7 +95,7 @@ export function Header() {
     >
       <div className="mx-auto flex max-w-[1240px] items-center justify-between px-5 sm:px-8">
         <Link
-          href="/"
+          href={isStaffArea && !isStaffLogin ? "/staff/rental-orders" : "/"}
           className={`font-heading text-xl font-bold tracking-tight ${
             onDarkHero ? "text-cream" : "text-ink"
           }`}
@@ -68,7 +104,7 @@ export function Header() {
         </Link>
 
         <nav className="hidden gap-9 md:flex">
-          {NAV_LINKS.map((link) => (
+          {navLinks.map((link) => (
             <a
               key={link.href}
               href={link.href}
@@ -81,6 +117,43 @@ export function Header() {
           ))}
         </nav>
 
+        {isStaffArea ? (
+          <div className="flex items-center gap-4">
+            {isStaffLogin ? (
+              <span className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-ink-soft">
+                <ShieldCheck className="h-3.5 w-3.5" /> Khu vực nội bộ
+              </span>
+            ) : (
+              staff && (
+                <>
+                  <span className="hidden text-right leading-tight sm:block">
+                    <span className="block text-xs font-semibold text-ink">{staff.hoTen}</span>
+                    <span className="block text-[10px] uppercase tracking-wider text-ink-soft">{staff.vaiTro}</span>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleStaffLogout}
+                    className="flex items-center gap-2 border border-ink px-4 py-2.5 text-xs font-semibold uppercase tracking-wider text-ink transition-colors hover:bg-ink hover:text-cream"
+                  >
+                    <LogOut className="h-3.5 w-3.5" />
+                    Đăng xuất
+                  </button>
+                </>
+              )
+            )}
+            {navLinks.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setMenuOpen(!menuOpen)}
+                aria-label={menuOpen ? "Đóng menu" : "Mở menu"}
+                aria-expanded={menuOpen}
+                className="text-ink md:hidden"
+              >
+                {menuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+              </button>
+            )}
+          </div>
+        ) : (
         <div className="flex items-center gap-4">
           <Link
             href="/cart"
@@ -145,7 +218,8 @@ export function Header() {
                 </MenuPrimitive.Positioner>
               </MenuPrimitive.Portal>
             </MenuPrimitive.Root>
-          ) : (
+          ) : pathname === "/login" ? null : (
+            // Đang ở trang đăng nhập thì không cần nút "Đăng nhập" nữa.
             <Link
               href="/login"
               className={`flex items-center gap-2 border px-5 py-2.5 text-xs font-semibold uppercase tracking-wider transition-colors ${
@@ -168,11 +242,12 @@ export function Header() {
             {menuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
           </button>
         </div>
+        )}
       </div>
 
       {menuOpen && (
         <nav className="border-t border-ink/10 bg-cream px-5 py-4 md:hidden">
-          {NAV_LINKS.map((link) => (
+          {navLinks.map((link) => (
             <a
               key={link.href}
               href={link.href}

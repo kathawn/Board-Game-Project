@@ -70,7 +70,7 @@ export default function ProductsPage() {
         <div className="mx-auto max-w-[1240px]">
           <Reveal className="mb-10">
             <span className="mb-3 inline-block text-xs font-semibold uppercase tracking-[0.18em] text-gold">
-              Bộ sưu tập
+              Sản phẩm
             </span>
             <h1 className="mb-3 text-[clamp(28px,3.4vw,42px)] font-heading leading-tight">
               Danh sách sản phẩm

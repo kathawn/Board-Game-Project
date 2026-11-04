@@ -54,10 +54,10 @@ async function lyDoChanGiaiPhongHop(db: Pick<Tx, "bienBanKiemDem">, maHop: strin
 
   const don = bienBan.chiTietDon.donHang;
   if (don.trangThai === "Active" || don.trangThai === "Overdue") {
-    return `Đơn ${don.maDon} chưa quyết toán hoàn cọc nên chưa xử lý xong đền bù (BRU-04).`;
+    return `Đơn ${don.maDon} chưa quyết toán hoàn cọc nên chưa xử lý xong đền bù.`;
   }
   if (don.trangThai === "Completed" && !don.thanhToan.some((t) => t.mucDich === "ThuThem" && t.trangThai === "DaThanhToan")) {
-    return `Khách chưa thanh toán khoản thu thêm của đơn ${don.maDon} nên chưa xử lý xong đền bù (BRU-04).`;
+    return `Khách chưa thanh toán khoản thu thêm của đơn ${don.maDon} nên chưa xử lý xong đền bù.`;
   }
   return null;
 }

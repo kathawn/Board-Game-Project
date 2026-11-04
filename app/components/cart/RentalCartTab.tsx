@@ -275,7 +275,7 @@ export function RentalCartTab({ onUnauthorized, onCount }: { onUnauthorized: () 
             {data && (
               <>
                 <br />
-                Giao vận (BRU-05): <span className="font-semibold text-ink">{TEN_DOI_TAC[data.giaoNhan.doiTac]}</span>
+                Giao vận: <span className="font-semibold text-ink">{TEN_DOI_TAC[data.giaoNhan.doiTac]}</span>
               </>
             )}
           </span>
@@ -292,11 +292,11 @@ export function RentalCartTab({ onUnauthorized, onCount }: { onUnauthorized: () 
             </dd>
           </div>
           <div className="flex justify-between border-t border-cream pt-3">
-            <dt className="text-xs font-semibold uppercase tracking-wider text-ink-soft">Tiền thuê (BRU-02)</dt>
+            <dt className="text-xs font-semibold uppercase tracking-wider text-ink-soft">Tiền thuê</dt>
             <dd className="font-heading font-semibold tabular-nums">{formatVND(data?.tong.tienThueChon ?? 0)}</dd>
           </div>
           <div className="flex items-baseline justify-between">
-            <dt className="text-xs font-semibold uppercase tracking-wider text-ink-soft">Tiền cọc (BRU-01)</dt>
+            <dt className="text-xs font-semibold uppercase tracking-wider text-ink-soft">Tiền cọc</dt>
             <dd className="font-heading text-xl font-bold tabular-nums text-wine">{formatVND(data?.tong.tienCocChon ?? 0)}</dd>
           </div>
         </dl>
