@@ -1,5 +1,4 @@
-/** Seed theo SDD mục 8 (Kịch bản Seed Data), dùng đúng 16 sản phẩm của app (lib/products.ts) thay vì
- * 5 tựa mẫu của SDD để khớp catalog đang chạy. Số liệu là giả định. Chạy lại được nhiều lần:
+/** Seed dùng đúng 16 sản phẩm của app (lib/products.ts) để khớp catalog đang chạy. Số liệu là giả định. Chạy lại được nhiều lần:
  * xoá sạch dữ liệu rồi nạp lại.
  *
  *   npx prisma db seed
@@ -50,7 +49,7 @@ async function wipe() {
 async function main() {
   await wipe();
 
-  // --- 1. Tài khoản demo + ví (SDD 8.1, BRU-06) ---
+  // --- 1. Tài khoản demo + ví (BRU-06) ---
   const matKhauHash = hashPassword(DEMO_PASSWORD);
   const diaChiNoiThanh = "12 Hàng Bài, Hoàn Kiếm, Hà Nội";
   const diaChiNgoaiThanh = "Thôn 3, xã Đông Hội, huyện Đông Anh, Hà Nội";
@@ -82,7 +81,7 @@ async function main() {
     data: { hoTen: "Phạm Quản Trị", email: "admin@boardverse.local", matKhauHash, vaiTro: "Admin", dangHoatDong: true },
   });
 
-  // --- 2. Sản phẩm + linh kiện + hộp game (SDD 8.2, 8.3) ---
+  // --- 2. Sản phẩm + linh kiện + hộp game ---
   // Mỗi sản phẩm: soLuongTon hộp Available (khớp catalog đang hiển thị), UNO và Cờ Cá Ngựa/Ma Sói... thêm hộp Sold.
   // Mỗi sản phẩm nhập sẵn SO_HOP_MAC_DINH hộp để demo không bị "Hết hàng" sau vài đơn thử (PRODUCTS.soLuongTon chỉ là fixture cho test).
   const SO_HOP_MAC_DINH = 5;
@@ -122,7 +121,7 @@ async function main() {
 
   const gia = (slug: string) => PRODUCTS.find((p) => p.slug === slug)!.giaNiemYet;
 
-  // --- 3. Đơn thuê Active, nội thành -> Green SM (SDD 8.4) ---
+  // --- 3. Đơn thuê Active, nội thành -> Green SM ---
   const kmNoi = uocTinhKhoangCachKm(diaChiNoiThanh);
   const shipNoi = tinhPhiShip(kmNoi);
   const catan = { start: "2026-10-20", end: "2026-10-23" };
@@ -156,7 +155,7 @@ async function main() {
   });
   await prisma.hopGame.updateMany({ where: { maHop: "CATAN-001" }, data: { trangThai: "Rented" } });
 
-  // --- 4. Đơn thuê Completed đã hoàn cọc, ngoại thành -> Shopee Express (SDD 8.5) ---
+  // --- 4. Đơn thuê Completed đã hoàn cọc, ngoại thành -> Shopee Express ---
   const kmNgoai = uocTinhKhoangCachKm(diaChiNgoaiThanh);
   const shipNgoai = tinhPhiShip(kmNgoai);
   const azul = { start: "2026-09-02", end: "2026-09-04" };
@@ -205,7 +204,7 @@ async function main() {
     },
   });
 
-  // --- 5. Đơn mua Confirmed, 2 dòng: UNO x2 + Codenames x1 (SDD 8.6, FR-BH-08/09) ---
+  // --- 5. Đơn mua Confirmed, 2 dòng: UNO x2 + Codenames x1 (FR-BH-08/09) ---
   const donBan = await prisma.donHang.create({
     data: { maDon: "DH-00231", khachHangId: khach.id, loai: "Ban", trangThai: "Confirmed", ngayTao: d("2026-10-12") },
   });

@@ -1,7 +1,7 @@
 /** FR-CT-03 (BR-02, BR-09, UC-04/UC-05): tính tiền cọc theo BRU-01 — tiền cọc
  * mỗi sản phẩm = giá niêm yết (100%) + phí giao vận ước tính chiều giao × 2
  * (dự trù cho cả chiều giao và chiều lấy hàng trả, vì cả hai chiều đều bắt
- * buộc qua giao vận). Thuật toán chọn đối tác + tính phí theo SDD mục 15
+ * buộc qua giao vận). Thuật toán chọn đối tác + tính phí theo BRU-05
  * (bản đồng bộ lại theo SRS/BRU-05: chọn đối tác theo khoảng cách thực tế —
  * Green SM nếu ≤ 20km, Shopee Express nếu > 20km — không phải theo khu vực
  * hành chính). Chưa có geocoding thật (FR-TTGV-02 chưa làm) nên khoảng cách

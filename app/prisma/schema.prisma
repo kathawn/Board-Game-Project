@@ -1,7 +1,7 @@
-// Schema chuyển từ SDD_BoardVerse_v1.0 mục 3 (13 model, khớp ERD SRS 3.5).
+// Schema 13 model, khớp ERD SRS 3.5.
 //
-// SQL Server không hỗ trợ enum native của Prisma -> các cột "enum" của SDD mục 4 được lưu dạng
-// String (giá trị y hệt SDD) và ràng buộc bằng CHECK ở migration SQL; kiểu TypeScript tương ứng
+// SQL Server không hỗ trợ enum native của Prisma -> các cột "enum" được lưu dạng
+// String (giá trị theo SRS) và ràng buộc bằng CHECK ở migration SQL; kiểu TypeScript tương ứng
 // nằm ở lib/db/enums.ts. UUID sinh phía ứng dụng (@default(uuid())). Tiền dùng Decimal(12,0)
 // theo ERD (NUMERIC(12,0)).
 
@@ -164,7 +164,7 @@ model ChiTietDonHang {
   giaoVan     GiaoVan[]
   bienBan     BienBanKiemDem[]
 
-  // FR-CT-02: index phục vụ kiểm tra tồn kho theo khoảng ngày (SDD mục 5).
+  // FR-CT-02: index phục vụ kiểm tra tồn kho theo khoảng ngày.
   @@index([sanPhamId, ngayBatDau, ngayKetThuc])
 }
 

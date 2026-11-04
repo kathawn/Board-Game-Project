@@ -1,7 +1,7 @@
 import type { PrismaClient } from "../generated/prisma/client";
 import type { Account, AccountStore } from "./store";
 
-/** Tài khoản khách hàng lưu ở bảng KhachHang (SDD mục 3). Đăng ký tạo luôn Ví điện tử nội bộ
+/** Tài khoản khách hàng lưu ở bảng KhachHang. Đăng ký tạo luôn Ví điện tử nội bộ
  * số dư 0 theo quan hệ 1-1 (BRU-06). */
 export function createPrismaAccountStore(getDb: () => PrismaClient): AccountStore {
   return {

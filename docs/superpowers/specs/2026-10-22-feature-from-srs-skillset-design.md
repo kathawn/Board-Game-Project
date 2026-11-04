@@ -2,7 +2,7 @@
 
 ## Intent và lý do
 
-Người dùng là BA, đang xây dự án portfolio giả định BoardVerse (BRD → SRS → SDD →
+Người dùng là BA, đang xây dự án portfolio giả định BoardVerse (BRD → SRS →
 vibe code). Giai đoạn vibe-code sắp tới sẽ lặp lại nhiều lần: mỗi lần implement
 1 tính năng (ví dụ UC-04 đăng nhập, UC-07 đặt cọc...) theo đúng quy trình 7 bước.
 Thay vì nhắc lại quy trình này bằng tay mỗi lần, cần đóng gói thành một bộ skill
