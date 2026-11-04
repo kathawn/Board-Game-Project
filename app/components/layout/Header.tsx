@@ -34,8 +34,7 @@ export function Header() {
   const [menuOpenAt, setMenuOpenAt] = useState<string | null>(null);
   const menuOpen = menuOpenAt === pathname;
   const setMenuOpen = (open: boolean) => setMenuOpenAt(open ? pathname : null);
-  const { totalItems } = useCart();
-  const [loggedIn, setLoggedIn] = useState<boolean | null>(null);
+  const { totalItems, loggedIn, refresh } = useCart();
   const isStaffArea = pathname.startsWith("/staff");
   const isStaffLogin = pathname === "/staff/login";
   const [staff, setStaff] = useState<StaffMe | null>(null);
@@ -53,10 +52,10 @@ export function Header() {
 
   useEffect(() => {
     if (isStaffArea) return; // khu nội bộ dùng phiên nhân viên, không liên quan tài khoản khách
-    fetch("/api/profile")
-      .then((response) => setLoggedIn(response.ok))
-      .catch(() => setLoggedIn(false));
-  }, [isStaffArea]);
+    // Trạng thái đăng nhập lấy từ /api/cart/summary (luôn 200, không sinh lỗi 401 cho khách chưa đăng nhập);
+    // gọi lại mỗi lần Header mount để sau khi đăng nhập/đăng xuất ở trang khác thì badge và nút tài khoản đúng ngay.
+    void refresh();
+  }, [isStaffArea, refresh]);
 
   useEffect(() => {
     if (!isStaffArea || isStaffLogin) return;
@@ -80,7 +79,7 @@ export function Header() {
 
   const handleLogout = async () => {
     await fetch("/api/auth/logout", { method: "POST" });
-    setLoggedIn(false);
+    await refresh();
     router.push("/");
     router.refresh();
   };

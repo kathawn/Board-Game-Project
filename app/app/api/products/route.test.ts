@@ -24,10 +24,10 @@ describe("GET /api/products (FR-BH-02)", () => {
 
   test("filters by category via the danhMuc query param", async () => {
     const { GET } = await import("./route");
-    const response = await GET(productsRequest("?danhMuc=Chi%E1%BA%BFn%20thu%E1%BA%ADt%20-%20Thu%20th%E1%BA%ADp"));
+    const response = await GET(productsRequest(`?danhMuc=${encodeURIComponent("Xếp hình & thu thập")}`));
     const body = await response.json();
 
-    expect(body.map((p: { slug: string }) => p.slug)).toEqual(["splendor"]);
+    expect(body.map((p: { slug: string }) => p.slug).sort()).toEqual(["azul", "carcassonne", "splendor"]);
   });
 
   test("filters by price range (giaMin/giaMax) against giaNiemYet when loai is absent or 'ban'", async () => {
