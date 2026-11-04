@@ -21,7 +21,7 @@ and was reported "done" with no human having seen it.
 ## When to Use
 
 Use when asked to build (or mock up) a frontend feature, and an SRS, BRD,
-SDD, or other spec document already describes that feature's requirements
+or other spec document already describes that feature's requirements
 in this repo.
 
 Do not use for features with no existing spec document (there's nothing to

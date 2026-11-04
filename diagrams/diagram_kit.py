@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Thu vien ve hinh bang Pillow dung chung cho BRD / SRS / SDD.
+Thu vien ve hinh bang Pillow dung chung cho BRD / SRS.
 Primitives: box, diamond, ellipse, actor, arrow, text.
 Composers: flowchart, swimlane, erd, grid2x2, fishbone, tree, layers,
 wireframe, usecase_diagram, sequence_diagram.

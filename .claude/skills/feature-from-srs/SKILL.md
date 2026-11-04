@@ -26,7 +26,7 @@ cheap, high-value checks and the ones this project explicitly asked to keep.
 ## When to Use
 
 Use when asked to implement a feature end-to-end in a repo that already has
-an SRS, BRD, SDD, or equivalent spec document describing that feature.
+an SRS, BRD, or equivalent spec document describing that feature.
 
 Do not use for a single isolated step someone already told you to do (e.g.
 "just run the acceptance tests" or "just build the mockup") — go straight to

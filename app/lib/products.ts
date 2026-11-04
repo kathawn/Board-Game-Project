@@ -28,7 +28,7 @@ export interface Product {
   linhKien: LinhKien[];
   tone: ProductTone;
   moTaNgan: string;
-  /** FR-BH-04: số hộp game đang ở trạng thái Available cho sản phẩm này (SDD model HopGame). */
+  /** FR-BH-04: số hộp game đang ở trạng thái Available cho sản phẩm này (model HopGame). */
   soLuongTon: number;
 }
 
