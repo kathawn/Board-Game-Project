@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Menu as MenuPrimitive } from "@base-ui/react/menu";
-import { ShoppingCart, User, Settings, LogOut, Receipt } from "lucide-react";
+import { ShoppingCart, User, Settings, LogOut, Receipt, Menu, X, Wallet } from "lucide-react";
 import { useCart } from "@/lib/cart/CartContext";
 
 const NAV_LINKS = [
@@ -18,13 +18,17 @@ export function Header() {
   const router = useRouter();
   const pathname = usePathname();
   const [scrolled, setScrolled] = useState(false);
+  // Lưu trang lúc mở menu: đổi trang thì menuOpen tự thành false, không cần effect đóng menu.
+  const [menuOpenAt, setMenuOpenAt] = useState<string | null>(null);
+  const menuOpen = menuOpenAt === pathname;
+  const setMenuOpen = (open: boolean) => setMenuOpenAt(open ? pathname : null);
   const { totalItems } = useCart();
   const [loggedIn, setLoggedIn] = useState<boolean | null>(null);
 
   // Trang chủ có hero nền tối (bg-wine-deep) phía sau header trong suốt —
   // chữ phải sáng màu ở đó để không "chìm" vào nền; mọi trang khác nền sáng
   // ngay từ đầu nên luôn dùng chữ tối.
-  const onDarkHero = pathname === "/" && !scrolled;
+  const onDarkHero = pathname === "/" && !scrolled && !menuOpen;
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 40);
@@ -48,7 +52,7 @@ export function Header() {
   return (
     <header
       className={`fixed inset-x-0 top-0 z-50 transition-all duration-400 ${
-        scrolled
+        scrolled || menuOpen
           ? "py-3.5 bg-cream/90 backdrop-blur-md shadow-[0_4px_24px_-8px_rgba(42,31,26,0.15)]"
           : "py-6"
       }`}
@@ -116,6 +120,13 @@ export function Header() {
                       Lịch sử đơn
                     </MenuPrimitive.Item>
                     <MenuPrimitive.Item
+                      render={<Link href="/wallet" />}
+                      className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-ink data-[highlighted]:bg-cream"
+                    >
+                      <Wallet className="h-4 w-4" />
+                      Ví của tôi
+                    </MenuPrimitive.Item>
+                    <MenuPrimitive.Item
                       render={<Link href="/account" />}
                       className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-ink data-[highlighted]:bg-cream"
                     >
@@ -147,8 +158,32 @@ export function Header() {
               Đăng nhập
             </Link>
           )}
+          <button
+            type="button"
+            onClick={() => setMenuOpen(!menuOpen)}
+            aria-label={menuOpen ? "Đóng menu" : "Mở menu"}
+            aria-expanded={menuOpen}
+            className={`md:hidden ${onDarkHero ? "text-cream" : "text-ink"}`}
+          >
+            {menuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+          </button>
         </div>
       </div>
+
+      {menuOpen && (
+        <nav className="border-t border-ink/10 bg-cream px-5 py-4 md:hidden">
+          {NAV_LINKS.map((link) => (
+            <a
+              key={link.href}
+              href={link.href}
+              onClick={() => setMenuOpen(false)}
+              className="block py-3 text-[13px] font-medium uppercase tracking-wider text-ink"
+            >
+              {link.label}
+            </a>
+          ))}
+        </nav>
+      )}
     </header>
   );
 }
