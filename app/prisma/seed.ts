@@ -84,6 +84,8 @@ async function main() {
 
   // --- 2. Sản phẩm + linh kiện + hộp game (SDD 8.2, 8.3) ---
   // Mỗi sản phẩm: soLuongTon hộp Available (khớp catalog đang hiển thị), UNO và Cờ Cá Ngựa/Ma Sói... thêm hộp Sold.
+  // Mỗi sản phẩm nhập sẵn SO_HOP_MAC_DINH hộp để demo không bị "Hết hàng" sau vài đơn thử (PRODUCTS.soLuongTon chỉ là fixture cho test).
+  const SO_HOP_MAC_DINH = 5;
   const sp: Record<string, string> = {};
   for (const p of PRODUCTS) {
     const created = await prisma.sanPham.create({
@@ -98,7 +100,7 @@ async function main() {
         soNguoiMax: p.soNguoiMax,
         linhKien: { create: p.linhKien.map((l) => ({ tenLinhKien: l.ten, laDocBan: l.docBan, soLuong: l.soLuong ?? 1, giaLe: l.giaLe ?? null })) },
         hopGame: {
-          create: Array.from({ length: p.soLuongTon }, (_, i) => ({
+          create: Array.from({ length: SO_HOP_MAC_DINH }, (_, i) => ({
             maHop: `${p.slug.toUpperCase()}-${String(i + 1).padStart(3, "0")}`,
             trangThai: "Available",
           })),

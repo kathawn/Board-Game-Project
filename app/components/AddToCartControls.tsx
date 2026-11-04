@@ -1,25 +1,48 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Minus, Plus } from "lucide-react";
 import type { Product } from "@/lib/products";
 import { useCart } from "@/lib/cart/CartContext";
 
 /** FR-BH-08: chọn số lượng rồi thêm vào giỏ mua — chỉ áp dụng cho đặt mua, không áp dụng cho đặt thuê. */
 export function AddToCartControls({ product }: { product: Product }) {
+  const router = useRouter();
   const { addItem } = useCart();
   const [soLuong, setSoLuong] = useState(1);
   const [message, setMessage] = useState<{ type: "ok" | "error"; text: string } | null>(null);
 
   const conHang = product.soLuongTon > 0;
 
-  const handleAdd = async () => {
-    const result = await addItem(product.slug, soLuong);
-    if (result.ok) {
-      setMessage({ type: "ok", text: `Đã thêm ${soLuong} "${product.ten}" vào giỏ.` });
-    } else {
+  const [busy, setBusy] = useState(false);
+
+  // Thêm vào giỏ; chưa đăng nhập thì chuyển sang trang đăng nhập thay vì chỉ báo lỗi chữ.
+  const themVaoGio = async (): Promise<boolean> => {
+    setBusy(true);
+    try {
+      const result = await addItem(product.slug, soLuong);
+      if (result.ok) return true;
+      if (/đăng nhập/i.test(result.error)) {
+        router.push("/login");
+        return false;
+      }
       setMessage({ type: "error", text: result.error });
+      return false;
+    } finally {
+      setBusy(false);
     }
+  };
+
+  const handleAdd = async () => {
+    if (await themVaoGio()) {
+      setMessage({ type: "ok", text: `Đã thêm ${soLuong} "${product.ten}" vào giỏ.` });
+    }
+  };
+
+  // "Mua ngay": thêm vào giỏ rồi sang giỏ hàng để thanh toán.
+  const handleBuyNow = async () => {
+    if (await themVaoGio()) router.push("/cart");
   };
 
   return (
@@ -49,10 +72,24 @@ export function AddToCartControls({ product }: { product: Product }) {
           </button>
         </div>
 
+        <p className="text-xs text-ink-soft">
+          {conHang ? `Còn ${product.soLuongTon} hộp` : "Hết hàng"}
+        </p>
+      </div>
+
+      <div className="mt-4 flex flex-wrap gap-4">
+        <button
+          type="button"
+          onClick={handleBuyNow}
+          disabled={!conHang || busy}
+          className="flex-1 bg-wine px-8 py-4 text-[13px] font-semibold uppercase tracking-wider text-paper transition-all hover:-translate-y-0.5 hover:bg-wine-deep disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:translate-y-0"
+        >
+          Mua ngay
+        </button>
         <button
           type="button"
           onClick={handleAdd}
-          disabled={!conHang}
+          disabled={!conHang || busy}
           className="flex-1 border border-ink px-8 py-4 text-[13px] font-semibold uppercase tracking-wider text-ink transition-colors hover:bg-ink hover:text-cream disabled:cursor-not-allowed disabled:opacity-40"
         >
           Thêm vào giỏ
