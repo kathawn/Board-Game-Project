@@ -18,7 +18,7 @@ export const CHART = {
   canhBao: "#c99d41", // gold — WARN ở mức tương phản 2.46:1, luôn đi kèm nhãn trực tiếp (không dùng màu đơn độc)
 };
 
-function fmtCompact(n: number): string {
+export function fmtCompact(n: number): string {
   if (n >= 1_000_000_000) return `${(n / 1_000_000_000).toFixed(1)}B`;
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}Tr`;
   if (n >= 1_000) return `${Math.round(n / 1000)}K`;
@@ -172,7 +172,7 @@ export function StackedStatusBar({
   );
 }
 
-function ChartTooltip({
+export function ChartTooltip({
   x,
   y,
   width,

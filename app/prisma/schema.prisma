@@ -251,3 +251,12 @@ model BienBanKiemDem {
 
   @@index([chiTietDonId])
 }
+
+/// Danh mục do Admin tạo sẵn (mở rộng UC-15, FR-ADM-03). Cột/bảng ngoài ERD SRS, bổ sung có chủ đích: SRS chỉ có
+/// SanPham.danhMuc (text tự do) nên không tạo được danh mục chưa có sản phẩm. Danh mục hiệu lực = bảng này
+/// ∪ các giá trị SanPham.danhMuc đang dùng (xem lib/admin/categories.ts) — sản phẩm cũ không cần backfill.
+model DanhMuc {
+  id      String   @id @default(uuid()) @db.UniqueIdentifier
+  ten     String   @unique
+  ngayTao DateTime @default(now())
+}
