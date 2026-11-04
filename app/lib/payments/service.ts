@@ -480,7 +480,7 @@ export function createPaymentService(deps: {
             if (tienHoan > 0) {
               await hoanVi(
                 tienHoan,
-                `Hoàn tiền ${khongDuHang.map((l) => l.productName).join(", ") || "đơn mua"} — hết hàng khi thanh toán thành công (BRU-07)`,
+                `Hoàn tiền ${khongDuHang.map((l) => l.productName).join(", ") || "đơn mua"} — hết hàng khi thanh toán thành công`,
               );
             }
 
@@ -582,7 +582,7 @@ export function createPaymentService(deps: {
             soTienHoan = hetHang.reduce((sum, l) => sum + l.tienCoc, 0);
             await hoanVi(
               soTienHoan,
-              `Hoàn cọc ${hetHang.map((l) => l.productName).join(", ")} — đã có khách khác thanh toán trước hoặc sản phẩm không còn kinh doanh (BRU-07)`,
+              `Hoàn cọc ${hetHang.map((l) => l.productName).join(", ")} — đã có khách khác thanh toán trước hoặc sản phẩm không còn kinh doanh`,
             );
           }
 

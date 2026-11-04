@@ -1,11 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { AlertTriangle, MapPin, Truck } from "lucide-react";
+import { AlertTriangle, MapPin, Printer, Truck } from "lucide-react";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { Pager, SearchBox } from "@/components/ListControls";
 import { formatVND } from "@/lib/products";
+import { printLabels, saleLabel } from "@/lib/rentals/label";
 import { staffFetch } from "@/lib/auth/staff-client";
 import type { SaleOrderPage, SaleStage } from "@/lib/orders/sale-orders";
 import { TEN_DOI_TAC, type TrangThaiVanChuyen } from "@/lib/shipping/types";
@@ -16,8 +17,8 @@ import { TEN_DOI_TAC, type TrangThaiVanChuyen } from "@/lib/shipping/types";
  * gắn vào trang này (UC-13). */
 
 const TABS: { key: SaleStage; label: string; hint: string }[] = [
-  { key: "ChoGiao", label: "Chờ giao", hint: "Đơn mua đã thanh toán, chờ Staff giao cho đối tác giao vận (một chiều giao)." },
-  { key: "DangGiao", label: "Đang giao", hint: "Đã có vận đơn — đơn hoàn tất khi đối tác báo đã giao tới khách (UC-12)." },
+  { key: "ChoGiao", label: "Chờ giao", hint: "Đơn mua đã thanh toán, chờ Staff giao cho đối tác giao vận (một chiều giao). In phiếu dán lên hộp trước khi giao." },
+  { key: "DangGiao", label: "Đang giao", hint: "Đã có vận đơn — đơn hoàn tất khi đối tác báo đã giao tới khách." },
   { key: "DaGiao", label: "Đã giao", hint: "Đơn mua đã giao xong (Hoàn tất)." },
 ];
 
@@ -131,6 +132,18 @@ export default function StaffSaleOrdersPage() {
             {/* ===== DANH SÁCH ===== */}
             <section className={`${card} flex flex-col gap-3 p-5`}>
               <SearchBox value={q} onChange={onSearch} placeholder="Tìm mã đơn, email khách, tên game…" />
+
+              {stage === "ChoGiao" && data && (
+                <button
+                  type="button"
+                  disabled={data.orders.length === 0}
+                  onClick={() => printLabels(data.orders.map(saleLabel))}
+                  className="flex items-center justify-center gap-1.5 self-end border border-ink/25 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-ink transition-colors hover:bg-ink hover:text-cream disabled:opacity-40"
+                >
+                  <Printer className="h-3.5 w-3.5" />
+                  In {data.orders.length} phiếu trong trang
+                </button>
+              )}
 
               {/* Chiều cao cố định cho 8 dòng để đổi tab / trang không làm trang nhảy. */}
               <ul className="min-h-[512px] divide-y divide-cream">
@@ -251,6 +264,16 @@ export default function StaffSaleOrdersPage() {
                         </>
                       )}
                     </p>
+                    {selected.stage === "ChoGiao" && (
+                      <button
+                        type="button"
+                        onClick={() => printLabels([saleLabel(selected)])}
+                        className="flex items-center justify-center gap-2 whitespace-nowrap border border-ink/25 px-5 py-2.5 text-xs font-semibold uppercase tracking-wider text-ink transition-colors hover:bg-ink hover:text-cream"
+                      >
+                        <Printer className="h-3.5 w-3.5" />
+                        In phiếu dán đơn
+                      </button>
+                    )}
                     {selected.stage === "ChoGiao" && (
                       <button
                         type="button"

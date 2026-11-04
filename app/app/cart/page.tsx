@@ -69,7 +69,7 @@ function CartView() {
             <span className="mb-3 inline-block text-xs font-semibold uppercase tracking-[0.18em] text-gold">Giỏ hàng</span>
             <h1 className="font-heading text-3xl font-semibold text-ink">Giỏ hàng của bạn</h1>
             <p className="mt-2 max-w-[560px] text-sm font-light text-ink-soft">
-              Giỏ thuê và giỏ mua tách riêng: thuê chọn ngày cho từng sản phẩm (FR-CT-01), mua chọn số lượng (FR-BH-08).
+              Giỏ thuê và giỏ mua tách riêng: thuê chọn ngày cho từng sản phẩm, mua chọn số lượng.
             </p>
           </Reveal>
 

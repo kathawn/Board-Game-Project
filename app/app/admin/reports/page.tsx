@@ -160,7 +160,7 @@ export default function AdminReportsPage() {
   return (
     <>
       <div className="mb-6">
-        <h1 className="font-heading text-3xl font-semibold text-ink">Báo cáo chi tiết (UC-16)</h1>
+        <h1 className="font-heading text-3xl font-semibold text-ink">Báo cáo chi tiết</h1>
         <p className="mt-2 text-sm font-light text-ink-soft">
           Đối chiếu từng giao dịch / hộp game / đơn hàng đứng sau các số liệu tổng hợp ở trang Tổng quan.
         </p>

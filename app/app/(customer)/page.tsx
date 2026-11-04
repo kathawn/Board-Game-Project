@@ -1,4 +1,4 @@
-import { Dice5, Gamepad2, Users2, HeartHandshake, Gift, PartyPopper } from "lucide-react";
+import { Users } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { Header } from "@/components/layout/Header";
@@ -9,15 +9,6 @@ import { Reveal } from "@/components/Reveal";
 import { Suspense } from "react";
 import { formatVND, giaThueNgayDau } from "@/lib/products";
 import { catalog } from "@/lib/catalog/server";
-
-const OCCASIONS = [
-  { icon: Users2, label: "Gia đình chủ nhật" },
-  { icon: HeartHandshake, label: "Hẹn hò nhẹ nhàng" },
-  { icon: PartyPopper, label: "Tiệc đông bạn bè" },
-  { icon: Gamepad2, label: "Đêm chiến thuật" },
-  { icon: Dice5, label: "Team building" },
-  { icon: Gift, label: "Quà tặng" },
-];
 
 // Danh mục đọc từ bảng SanPham (FR-ADM-03) nên là dữ liệu runtime → bọc trong Suspense (cacheComponents).
 export default function CustomerHome() {
@@ -30,12 +21,8 @@ export default function CustomerHome() {
 
 async function HomeContent() {
   const PRODUCTS = await catalog.list();
-  // Nổi bật ưu tiên Cờ Tỷ Phú, nhưng nếu hết hàng thì chuyển sang sản phẩm còn hàng đầu tiên.
-  const FEATURED =
-    PRODUCTS.find((p) => p.slug === "co-ty-phu" && p.soLuongTon > 0) ??
-    PRODUCTS.find((p) => p.soLuongTon > 0) ??
-    PRODUCTS[0];
-  if (!FEATURED) return null;
+  // Sản phẩm nổi bật = top 5 bán chạy nhất (theo số hộp ở các đơn mua chưa huỷ).
+  const TOP = await catalog.topSelling(5);
   // Ảnh nền hero: 6 hộp game đầu bảng (sắp theo tên), ghép mờ phía sau lớp phủ rượu vang.
   const HERO_COVERS = PRODUCTS.filter((p) => p.anh !== "/images/placeholder.jpg").slice(0, 6);
 
@@ -62,7 +49,7 @@ async function HomeContent() {
         />
         <div className="relative z-10 max-w-[680px] px-6 text-cream">
           <span className="mb-4.5 inline-block text-xs font-semibold uppercase tracking-[0.18em] text-gold">
-            BoardVerse — Quận 1, TP. Hồ Chí Minh
+            BoardVerse — Cầu Giấy, Hà Nội
           </span>
           <h1 className="mb-2 font-script text-[clamp(72px,11vw,150px)] font-normal leading-none text-paper">
             BoardVerse
@@ -77,7 +64,7 @@ async function HomeContent() {
               href="#collection"
               className="inline-flex items-center justify-center gap-2 bg-wine px-8 py-4 text-[13px] font-semibold uppercase tracking-wider text-paper transition-all hover:-translate-y-0.5 hover:bg-wine-deep"
             >
-              Khám phá bộ sưu tập
+              Khám phá sản phẩm
             </a>
             <a
               href="#featured"
@@ -92,95 +79,80 @@ async function HomeContent() {
         </div>
       </section>
 
-      {/* FEATURED */}
-      <section id="featured" className="overflow-hidden bg-paper py-24 sm:py-36">
-        <div className="mx-auto grid max-w-[1240px] grid-cols-1 gap-14 px-5 sm:px-8 lg:grid-cols-[1.1fr_0.9fr] lg:gap-20">
-          <Reveal className="relative min-h-[320px] lg:min-h-[480px]">
-            <div className="relative h-full min-h-[320px] w-[88%] overflow-hidden rounded bg-amber/40 shadow-[0_40px_80px_-30px_rgba(42,31,26,0.35)] lg:min-h-[480px]">
-              <Image
-                src={FEATURED.anh}
-                alt={FEATURED.ten}
-                fill
-                sizes="(min-width: 1024px) 45vw, 88vw"
-                className="object-cover"
-              />
-            </div>
-            <div className="absolute -right-2 bottom-[-20px] w-[260px] rotate-2 rounded border border-ink/12 bg-paper p-6 shadow-[0_30px_60px_-20px_rgba(42,31,26,0.3)] sm:bottom-[-40px] sm:w-[300px]">
-              <span className="mb-2.5 block text-[10px] uppercase tracking-wider text-gold">
-                {FEATURED.danhMuc}
-              </span>
-              <h3 className="mb-4.5 font-script text-3xl font-normal leading-tight text-wine">
-                {FEATURED.ten}
-              </h3>
-              <div className="mb-3.5">
-                <span className="mb-0.5 block text-[10px] uppercase tracking-wider text-ink-soft">
-                  Số người chơi
-                </span>
-                <span className="block font-heading text-sm italic">
-                  {FEATURED.soNguoiMin}–{FEATURED.soNguoiMax} người
-                </span>
-              </div>
-              <div className="mb-3.5">
-                <span className="mb-0.5 block text-[10px] uppercase tracking-wider text-ink-soft">
-                  Linh kiện đi kèm
-                </span>
-                <span className="block font-heading text-sm italic">
-                  {FEATURED.linhKien.length} món, kiểm đếm đầy đủ khi trả
-                </span>
-              </div>
-              <div className="mt-4.5 border-t border-ink/10 pt-3.5 text-[10px] uppercase tracking-wider text-ink-soft">
-                Chọn lọc tại BoardVerse, TP.HCM
-              </div>
-            </div>
-          </Reveal>
-
-          <Reveal className="pt-10 lg:pt-0">
+      {/* FEATURED — top 5 bán chạy nhất */}
+      <section id="featured" className="bg-paper py-24 sm:py-36">
+        <div className="mx-auto max-w-[1240px] px-5 sm:px-8">
+          <Reveal className="mx-auto mb-16 max-w-[620px] text-center">
             <span className="mb-4 inline-block text-xs font-semibold uppercase tracking-[0.18em] text-gold">
-              Sản phẩm nổi bật tuần này
+              Sản phẩm nổi bật
             </span>
             <h2 className="mb-5 text-[clamp(30px,3.6vw,44px)] font-heading leading-tight">
-              Một buổi chiều
+              Top 5 board game
               <br />
-              không vội vàng
+              bán chạy nhất
             </h2>
-            <p className="mb-9 max-w-[440px] text-base font-light leading-relaxed text-ink-soft">
-              {FEATURED.ten} — {FEATURED.moTaNgan} Chỉ cần một cái bàn và những
-              người bạn sẵn sàng ngồi lại cùng nhau.
+            <p className="mx-auto max-w-[460px] text-base font-light leading-relaxed text-ink-soft">
+              Những hộp game được khách chọn nhiều nhất tại BoardVerse — kèm vài
+              dòng giới thiệu để bạn chọn đúng tựa cho buổi chơi.
             </p>
-            <div className="flex flex-wrap items-center gap-6">
-              <div className="inline-flex overflow-hidden rounded border border-ink/20">
-                <Link
-                  href={`/products/${FEATURED.slug}?loai=ban`}
-                  className="bg-ink px-5 py-2.5 text-xs font-semibold uppercase tracking-wider text-cream"
-                >
-                  Mua
-                </Link>
-                <Link
-                  href={`/products/${FEATURED.slug}?loai=thue`}
-                  className="px-5 py-2.5 text-xs font-semibold uppercase tracking-wider text-ink-soft transition-colors hover:bg-ink/5"
-                >
-                  Thuê/ngày
-                </Link>
-              </div>
-              <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
-                <div>
-                  <span className="block font-heading text-2xl font-bold">
-                    {formatVND(FEATURED.giaNiemYet)}
-                  </span>
-                  <span className="block text-[11px] text-ink-soft">
-                    hoặc thuê từ {formatVND(giaThueNgayDau(FEATURED.giaNiemYet))}/ngày · còn{" "}
-                    {FEATURED.soLuongTon} hộp
-                  </span>
-                </div>
-                <Link
-                  href={`/products/${FEATURED.slug}?loai=ban`}
-                  className="bg-wine px-8 py-4 text-[13px] font-semibold uppercase tracking-wider text-paper transition-colors hover:bg-wine-deep"
-                >
-                  Xem &amp; thêm vào giỏ
-                </Link>
-              </div>
-            </div>
           </Reveal>
+
+          <div className="flex flex-col gap-8">
+            {TOP.map((p, i) => (
+              <Reveal key={p.slug}>
+                <article className="grid grid-cols-1 gap-6 rounded bg-cream p-5 shadow-[0_30px_60px_-30px_rgba(42,31,26,0.25)] sm:grid-cols-[200px_1fr] sm:gap-8 sm:p-6 lg:grid-cols-[240px_1fr_auto]">
+                  <Link
+                    href={`/products/${p.slug}`}
+                    className="relative block aspect-[4/3] overflow-hidden rounded bg-amber/40 sm:aspect-square"
+                  >
+                    <Image
+                      src={p.anh}
+                      alt={p.ten}
+                      fill
+                      sizes="(min-width: 1024px) 240px, (min-width: 640px) 200px, 90vw"
+                      className="object-cover"
+                    />
+                    <span className="absolute left-0 top-0 bg-wine px-3 py-1.5 font-heading text-sm italic text-paper">
+                      #{i + 1}
+                    </span>
+                  </Link>
+
+                  <div className="flex flex-col justify-center">
+                    <span className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-gold">
+                      {p.danhMuc}
+                    </span>
+                    <h3 className="mb-3 font-script text-3xl font-normal leading-tight text-wine sm:text-4xl">
+                      {p.ten}
+                    </h3>
+                    <p className="mb-4 max-w-[520px] text-[15px] font-light leading-relaxed text-ink-soft">
+                      {p.moTaNgan}
+                    </p>
+                    <span className="inline-flex items-center gap-1.5 text-xs text-ink-soft">
+                      <Users className="h-3.5 w-3.5" aria-hidden />
+                      {p.soNguoiMin}–{p.soNguoiMax} người chơi · {p.linhKien.length} loại linh kiện
+                    </span>
+                  </div>
+
+                  <div className="flex flex-col justify-center gap-3 sm:col-span-2 lg:col-span-1 lg:items-end lg:text-right">
+                    <div>
+                      <span className="block font-heading text-2xl font-bold">
+                        {formatVND(p.giaNiemYet)}
+                      </span>
+                      <span className="block text-[11px] text-ink-soft">
+                        hoặc thuê từ {formatVND(giaThueNgayDau(p.giaNiemYet))}/ngày
+                      </span>
+                    </div>
+                    <Link
+                      href={`/products/${p.slug}`}
+                      className="inline-flex items-center justify-center bg-wine px-6 py-3 text-[12px] font-semibold uppercase tracking-wider text-paper transition-colors hover:bg-wine-deep"
+                    >
+                      Xem chi tiết
+                    </Link>
+                  </div>
+                </article>
+              </Reveal>
+            ))}
+          </div>
         </div>
       </section>
 
@@ -189,7 +161,7 @@ async function HomeContent() {
         <div className="mx-auto max-w-[1240px] px-5 sm:px-8">
           <Reveal className="mx-auto mb-16 max-w-[620px] text-center">
             <span className="mb-4 inline-block text-xs font-semibold uppercase tracking-[0.18em] text-gold">
-              Bộ sưu tập
+              Sản phẩm
             </span>
             <h2 className="mb-5 text-[clamp(30px,3.6vw,44px)] font-heading leading-tight">
               Mỗi hộp game,
@@ -221,66 +193,6 @@ async function HomeContent() {
         </div>
       </section>
 
-      {/* OCCASIONS */}
-      <section
-        id="occasions"
-        className="relative overflow-hidden bg-wine-deep py-24 text-cream sm:py-36"
-      >
-        <div
-          className="pointer-events-none absolute inset-0 opacity-50"
-          style={{
-            background:
-              "radial-gradient(ellipse at 30% 20%, rgba(184,144,63,0.25), transparent 55%), radial-gradient(ellipse at 80% 80%, rgba(122,34,48,0.5), transparent 60%)",
-          }}
-        />
-        <div className="relative z-10 mx-auto max-w-[1240px] px-5 sm:px-8">
-          <Reveal className="mx-auto mb-16 max-w-[560px] text-center">
-            <h2 className="mb-5 text-[clamp(30px,3.6vw,44px)] font-heading leading-tight text-cream">
-              Phù hợp cho{" "}
-              <span className="font-script text-[1.5em] font-normal text-gold">
-                mọi dịp
-              </span>
-            </h2>
-            <p className="mx-auto max-w-[440px] text-base font-light leading-relaxed text-cream/75">
-              Không phải lúc nào cũng cần một chiến thuật gia. Chọn theo không
-              khí bạn muốn.
-            </p>
-          </Reveal>
-
-          <div className="mb-14 grid grid-cols-2 gap-4.5 sm:grid-cols-3 lg:grid-cols-6">
-            {OCCASIONS.map((occasion, i) => {
-              const Icon = occasion.icon;
-              return (
-                <Reveal
-                  key={occasion.label}
-                  delay={i * 60}
-                  className="flex flex-col items-center gap-3 text-center"
-                >
-                  <span className="font-heading text-xs italic text-gold">
-                    {String(i + 1).padStart(2, "0")}
-                  </span>
-                  <div className="flex aspect-square w-full items-center justify-center rounded-full border-2 border-cream/25">
-                    <Icon className="h-6 w-6 text-cream/80" aria-hidden />
-                  </div>
-                  <span className="text-xs font-medium tracking-wide text-cream/85">
-                    {occasion.label}
-                  </span>
-                </Reveal>
-              );
-            })}
-          </div>
-
-          <Reveal className="text-center">
-            <a
-              href="#contact"
-              className="inline-flex items-center justify-center bg-ink px-8.5 py-4 text-[13px] font-semibold uppercase tracking-wider text-cream transition-colors hover:bg-black"
-            >
-              Đặt combo trải nghiệm — 890.000đ
-            </a>
-          </Reveal>
-        </div>
-      </section>
-
       {/* CONTACT */}
       <section id="contact" className="bg-paper py-24 sm:py-36">
         <div className="mx-auto grid max-w-[1240px] grid-cols-1 gap-10 px-5 sm:px-8 lg:grid-cols-2 lg:gap-18">
@@ -294,7 +206,7 @@ async function HomeContent() {
               tại BoardVerse
             </h2>
             <p className="max-w-[440px] text-base font-light leading-relaxed text-ink-soft">
-              Quận 1, Thành phố Hồ Chí Minh
+              Cầu Giấy, Hà Nội
               <br />
               09:00 – 22:00, tất cả các ngày trong tuần
               <br />

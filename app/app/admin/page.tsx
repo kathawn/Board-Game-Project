@@ -116,7 +116,7 @@ export default function AdminDashboardPage() {
                 Xem chi tiết <ArrowRight className="h-3 w-3" />
               </Link>
             </div>
-            <p className="mb-5 text-xs text-ink-soft">FR-ADM-04 · BR-07 — doanh thu bán = tiền hàng; doanh thu thuê = tiền thuê (không gồm cọc, ship, hoàn).</p>
+            <p className="mb-5 text-xs text-ink-soft">Doanh thu bán = tiền hàng; doanh thu thuê = tiền thuê (không gồm cọc, ship, hoàn).</p>
             {months === null ? <p className="py-10 text-center text-sm text-ink-soft">Đang tải...</p> : <RevenueBarChart data={revenueData} />}
           </section>
 
@@ -128,7 +128,7 @@ export default function AdminDashboardPage() {
                 Xem chi tiết <ArrowRight className="h-3 w-3" />
               </Link>
             </div>
-            <p className="mb-5 text-xs text-ink-soft">FR-ADM-05 · BR-13 — {totalBoxes} hộp trên toàn bộ danh mục.</p>
+            <p className="mb-5 text-xs text-ink-soft">{totalBoxes} hộp trên toàn bộ danh mục.</p>
             {boxCounts === null ? <p className="py-10 text-center text-sm text-ink-soft">Đang tải...</p> : <StackedStatusBar segments={boxSegments} />}
           </section>
         </div>
@@ -171,9 +171,9 @@ export default function AdminDashboardPage() {
           <section className={CARD}>
             <h2 className="mb-4 font-heading text-lg text-ink">Công cụ quản trị</h2>
             <div className="space-y-2">
-              <ToolLink href="/admin/products" icon={Package} label="Sản phẩm & giá" desc="Thêm / sửa / xoá, cập nhật giá niêm yết (UC-15)" />
-              <ToolLink href="/admin/categories" icon={Tag} label="Danh mục" desc="Đổi tên / gộp danh mục sản phẩm (UC-15)" />
-              <ToolLink href="/admin/reports" icon={ShoppingCart} label="Báo cáo chi tiết" desc="Tra từng giao dịch, hộp game, đơn hàng (UC-16)" />
+              <ToolLink href="/admin/products" icon={Package} label="Sản phẩm & giá" desc="Thêm / sửa / xoá, cập nhật giá niêm yết" />
+              <ToolLink href="/admin/categories" icon={Tag} label="Danh mục" desc="Đổi tên / gộp danh mục sản phẩm" />
+              <ToolLink href="/admin/reports" icon={ShoppingCart} label="Báo cáo chi tiết" desc="Tra từng giao dịch, hộp game, đơn hàng" />
             </div>
           </section>
         </div>

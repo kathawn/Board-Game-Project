@@ -351,7 +351,7 @@ export default function StaffReturnsPage() {
                     {l.tra.trangThai === "DaLay" ? (
                       <span className="font-semibold text-forest">Đã lấy — hàng về kho {l.ngayTra}</span>
                     ) : (
-                      <span className="font-semibold text-gold">Đang lấy — chờ hàng về kho (UC-12)</span>
+                      <span className="font-semibold text-gold">Đang lấy — chờ hàng về kho</span>
                     )}
                   </>
                 ) : (
@@ -364,7 +364,7 @@ export default function StaffReturnsPage() {
 
         <section>
           <h2 className="mb-4 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-ink-soft">
-            <ClipboardCheck className="h-4 w-4" /> Bước 1 — Kiểm đếm linh kiện (UC-08)
+            <ClipboardCheck className="h-4 w-4" /> Bước 1 — Kiểm đếm linh kiện
           </h2>
           <div className="flex flex-col gap-4">
             {order.lines.map((l) => {
@@ -488,7 +488,7 @@ export default function StaffReturnsPage() {
 
                   <div className="mt-2 flex flex-wrap items-center justify-between gap-2 border-t border-ink/15 pt-3">
                     <span className="text-xs font-semibold uppercase tracking-wider text-ink">
-                      Tổng khách phải đền cho linh kiện thiếu/hư hỏng (BRU-04)
+                      Tổng khách phải đền cho linh kiện thiếu/hư hỏng
                       {tongHienThi.tongTho > tongHienThi.denBu && (
                         <span className="ml-2 font-normal normal-case tracking-normal text-ink-soft">
                           (tổng {formatVND(tongHienThi.tongTho)}, giới hạn tối đa 100% giá bộ)
@@ -559,18 +559,18 @@ export default function StaffReturnsPage() {
 
         <section>
           <h2 className="mb-4 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-ink-soft">
-            <Wallet className="h-4 w-4" /> Bước 2 — Quyết toán hoàn cọc (UC-07)
+            <Wallet className="h-4 w-4" /> Bước 2 — Quyết toán hoàn cọc
           </h2>
 
           {!kqPhieu || (!inspectionDone && !daQuyetToan) ? (
             <div className={`${card} p-8 text-center text-sm text-ink-soft`}>
               {order.chuaQuyetToanDuoc ??
-                "Cần hoàn tất và lưu biên bản kiểm đếm (UC-08) cho mọi sản phẩm trong đơn trước khi quyết toán."}
+                "Cần hoàn tất và lưu biên bản kiểm đếm cho mọi sản phẩm trong đơn trước khi quyết toán."}
             </div>
           ) : (
             <article className={`${card} p-5`}>
               <div className="mb-3 flex justify-between border-b border-cream pb-3 text-sm">
-                <span className="text-ink-soft">Tiền cọc đã thu (BRU-01: giá niêm yết + ship × 2)</span>
+                <span className="text-ink-soft">Tiền cọc đã thu (giá niêm yết + ship × 2)</span>
                 <span className="font-semibold text-ink">{formatVND(kqPhieu.tongCocDaThu)}</span>
               </div>
 
@@ -587,14 +587,14 @@ export default function StaffReturnsPage() {
                       Thành tiền
                     </span>
 
-                    <span className="text-ink-soft">Phạt trễ hạn — 15%/ngày, trần 100% (BRU-03)</span>
+                    <span className="text-ink-soft">Phạt trễ hạn — 15%/ngày, trần 100%</span>
                     <span className="text-right text-ink-soft">{formatVND(donGiaPhatMoiNgay(r.giaNiemYet))}/ngày</span>
                     <span className="text-right text-ink-soft">{r.soNgayTre} ngày</span>
                     <span className={`text-right font-semibold ${r.phat > 0 ? "text-destructive" : "text-ink-soft"}`}>
                       {r.phat > 0 ? `− ${formatVND(r.phat)}` : "0đ"}
                     </span>
 
-                    <span className="font-semibold text-ink">Tổng đền bù linh kiện (BRU-04)</span>
+                    <span className="font-semibold text-ink">Tổng đền bù linh kiện</span>
                     <span />
                     <span />
                     <span className={`text-right font-semibold ${r.denBu > 0 ? "text-destructive" : "text-ink-soft"}`}>
@@ -606,7 +606,7 @@ export default function StaffReturnsPage() {
                       </span>
                     )}
 
-                    <span className="text-ink-soft">Phí ship thực tế khách chịu 100%, cả hai chiều (FR-TTGV-08)</span>
+                    <span className="text-ink-soft">Phí ship thực tế khách chịu 100%, cả hai chiều</span>
                     <span className="text-right text-ink-soft">
                       giao {formatVND(r.phiShipNhanThucTe)} + trả {formatVND(r.phiShipTraThucTe)}
                     </span>
@@ -627,7 +627,7 @@ export default function StaffReturnsPage() {
 
               <dl className="flex flex-col gap-2 border-t border-cream pt-4 text-sm">
                 <div className="flex justify-between">
-                  <dt className="text-ink-soft">Tổng phạt trễ hạn (FR-CT-06)</dt>
+                  <dt className="text-ink-soft">Tổng phạt trễ hạn</dt>
                   <dd className="font-semibold text-destructive">− {formatVND(kqPhieu.tongPhat)}</dd>
                 </div>
                 <div className="flex justify-between">
@@ -640,7 +640,7 @@ export default function StaffReturnsPage() {
                 </div>
                 <div className="mt-2 flex items-end justify-between border-t border-cream pt-4">
                   <dt className="text-[11px] font-semibold uppercase tracking-wider text-ink-soft">
-                    {kqPhieu.soTienThuThem > 0 ? "Khách còn phải trả thêm" : "Số tiền hoàn cọc"} (FR-CT-07)
+                    {kqPhieu.soTienThuThem > 0 ? "Khách còn phải trả thêm" : "Số tiền hoàn cọc"}
                   </dt>
                   <dd
                     className={`font-heading text-2xl font-bold ${kqPhieu.soTienThuThem > 0 ? "text-destructive" : "text-wine"}`}
@@ -653,7 +653,7 @@ export default function StaffReturnsPage() {
               {!daQuyetToan && thieuTien && (
                 <p className="mt-4 flex items-start gap-2 rounded bg-destructive/10 p-3 text-xs text-destructive">
                   <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                  Tổng phạt/đền bù/ship vượt tiền cọc đã thu — hệ thống không trừ âm, sẽ sinh mã QR thu thêm (UC-10).
+                  Tổng phạt/đền bù/ship vượt tiền cọc đã thu — hệ thống không trừ âm, sẽ sinh mã QR thu thêm.
                 </p>
               )}
               {!daQuyetToan && !thieuTien && kqPhieu.ketQuaCuoi === 0 && (
@@ -667,7 +667,7 @@ export default function StaffReturnsPage() {
                   {daQuyetToan
                     ? order.phieu?.xuLy === "ThuThem"
                       ? "Đã lập phiếu — đơn Completed, chờ khách thanh toán khoản thu thêm."
-                      : "Đã lập phiếu và cộng vào Ví điện tử nội bộ của khách (BRU-06). Đơn: Completed → Closed."
+                      : "Đã lập phiếu và cộng vào Ví điện tử nội bộ của khách. Đơn: Completed → Closed."
                     : thieuTien
                       ? "Xác nhận sẽ sinh mã QR thu thêm."
                       : "Xác nhận sẽ cộng tiền hoàn vào Ví điện tử nội bộ của khách."}
@@ -771,7 +771,7 @@ export default function StaffReturnsPage() {
           <p className="py-8 text-center text-sm text-ink-soft">
             {qApplied || stage !== "all"
               ? "Không có đơn nào khớp bộ lọc."
-              : "Chưa có đơn nào đang chờ nhận hàng trả. Đơn xuất hiện sau khi khách yêu cầu giao vận đến lấy hàng trả (UC-11)."}
+              : "Chưa có đơn nào đang chờ nhận hàng trả. Đơn xuất hiện sau khi khách yêu cầu giao vận đến lấy hàng trả."}
           </p>
         ) : (
           <ul className="flex flex-col divide-y divide-cream xl:max-h-[calc(100vh-24rem)] xl:overflow-y-auto">
@@ -835,7 +835,7 @@ export default function StaffReturnsPage() {
   const boxesTab = (
     <div className={`${card} flex flex-col gap-4 p-5`}>
       <p className="text-xs text-ink-soft">
-        UC-09 / FR-KHO-02: đổi trạng thái hộp game theo State Machine (SRS Hình 3.7). Hộp Damaged chỉ trả về Available
+        Đổi trạng thái hộp game theo vòng đời cố định. Hộp Damaged chỉ trả về Available
         sau khi đơn liên quan đã quyết toán xong đền bù.
       </p>
       <SearchBox value={bq} onChange={onBoxSearch} placeholder="Tìm mã hộp hoặc tên sản phẩm..." />
@@ -914,7 +914,7 @@ export default function StaffReturnsPage() {
             </span>
             <h1 className="font-heading text-3xl font-semibold text-ink">Nhận hàng trả &amp; kho</h1>
             <p className="mt-2 text-sm font-light text-ink-soft">
-              UC-08 kiểm đếm → UC-07 phạt, đền bù, hoàn cọc → UC-09 trạng thái hộp game.
+              Kiểm đếm → phạt, đền bù, hoàn cọc → cập nhật trạng thái hộp game.
             </p>
           </Reveal>
 

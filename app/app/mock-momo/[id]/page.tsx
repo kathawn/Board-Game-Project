@@ -8,8 +8,8 @@ import { notFound } from "next/navigation";
 const ACTIONS = [
   { action: "success", label: "Gửi webhook thành công", hint: "Khách đã quét QR và xác nhận" },
   { action: "duplicate", label: "Gửi webhook thành công 2 lần", hint: "Kiểm tra idempotency (MoMo retry)" },
-  { action: "fail", label: "Gửi webhook thất bại", hint: "UC-10 luồng 3b" },
-  { action: "expire", label: "Không gửi gì — hết 15 phút", hint: "UC-10 luồng 3a" },
+  { action: "fail", label: "Gửi webhook thất bại", hint: "Thanh toán thất bại" },
+  { action: "expire", label: "Không gửi gì — hết 15 phút", hint: "Mã QR hết hiệu lực" },
 ] as const;
 
 export default function MockMomoPage({ params }: { params: Promise<{ id: string }> }) {

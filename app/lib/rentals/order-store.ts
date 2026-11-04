@@ -6,6 +6,11 @@ import type { Shipment } from "../shipping/types";
 import { creditWallet } from "../payments/wallet";
 import { ngayVietNam } from "./settlement";
 
+/** Ngày mai theo giờ Việt Nam (yyyy-mm-dd) — mốc "cần giao gấp" của tab Chờ bàn giao. */
+export function ngayMaiVN(now: Date = new Date()): string {
+  return ngayVietNam(new Date(now.getTime() + 86_400_000));
+}
+
 /** FR-CT-05 (BR-01, UC-05/UC-06): đơn thuê. Đơn chỉ được TẠO bởi webhook thanh toán cọc thành công
  * (lib/payments/service.ts, UC-10); store này chỉ đọc và xác nhận. Mỗi dòng giữ lại tiền thuê
  * (FR-CT-04/BRU-02) và tiền cọc (FR-CT-03/BRU-01) đã tính lúc tạo đơn, để Staff xác nhận (UC-05)
@@ -26,6 +31,9 @@ export interface RentalOrder {
   /** Mã hiển thị (DT-00001); khoá chính UUID chỉ dùng nội bộ trong DB. */
   id: string;
   email: string;
+  /** Họ tên + SĐT người nhận (từ hồ sơ khách) — in lên phiếu dán đơn. Có thể trống nếu khách chưa cập nhật hồ sơ. */
+  hoTen?: string;
+  sdt?: string;
   trangThai: TrangThaiDonThue;
   ngayTao: string;
   diaChiNhan: string;
@@ -58,12 +66,21 @@ export interface RentalOrderPage {
   totalPages: number;
   /** Số đơn theo từng giai đoạn (áp dụng từ khoá tìm kiếm, không áp dụng giai đoạn) để hiện trên tab. */
   counts: Record<RentalStage, number>;
+  /** Số đơn "Chờ bàn giao" cần giao gấp: có dòng bắt đầu thuê từ hôm nay trở về trước hoặc ngày mai (áp dụng từ khoá tìm). */
+  soGap: number;
 }
 
 export interface RentalOrderStore {
   list(): Promise<RentalOrder[]>;
   /** Tìm kiếm (mã đơn / email khách / tên sản phẩm) + lọc giai đoạn + phân trang chạy ở SQL, không tải hết đơn về. */
-  search(opts: { q: string; stage: RentalStage; page: number; pageSize: number }): Promise<RentalOrderPage>;
+  search(opts: {
+    q: string;
+    stage: RentalStage;
+    page: number;
+    pageSize: number;
+    /** Chỉ lấy đơn cần giao gấp (xem RentalOrderPage.soGap); chỉ có ý nghĩa ở giai đoạn ChoBanGiao. */
+    urgent?: boolean;
+  }): Promise<RentalOrderPage>;
   get(id: string): Promise<RentalOrder | undefined>;
   /** FR-CT-05/UC-05: Staff xác nhận đơn — chỉ hợp lệ khi đơn đang ở Pending. */
   confirm(id: string): Promise<{ ok: true; order: RentalOrder } | { ok: false; error: string }>;
@@ -75,7 +92,7 @@ export interface RentalOrderStore {
 }
 
 const includeOrder = {
-  khachHang: { select: { email: true } },
+  khachHang: { select: { email: true, hoTen: true, sdt: true } },
   chiTiet: { include: { sanPham: { select: { slug: true, ten: true } }, giaoVan: true } },
   datCoc: true,
   thanhToan: { select: { maThanhToan: true }, take: 1 },
@@ -96,6 +113,8 @@ function toRentalOrder(row: OrderRow): RentalOrder {
   return {
     id: row.maDon,
     email: row.khachHang.email,
+    hoTen: row.khachHang.hoTen || undefined,
+    sdt: row.khachHang.sdt || undefined,
     trangThai: (["Confirmed", "Active", "Overdue", "Cancelled"].includes(row.trangThai) ? row.trangThai : "Pending") as TrangThaiDonThue,
     ngayTao: toIso(row.ngayTao),
     diaChiNhan,
@@ -123,7 +142,7 @@ export function createPrismaRentalOrderStore(getDb: () => PrismaClient): RentalO
       return rows.map(toRentalOrder);
     },
 
-    async search({ q, stage, page, pageSize }) {
+    async search({ q, stage, page, pageSize, urgent }) {
       const db = getDb();
       const keyword = q.trim();
       const timKiem: Prisma.DonHangWhereInput = keyword
@@ -136,13 +155,22 @@ export function createPrismaRentalOrderStore(getDb: () => PrismaClient): RentalO
           }
         : {};
       const base: Prisma.DonHangWhereInput = { loai: "Thue", ...timKiem };
-      const where: Prisma.DonHangWhereInput = { ...base, trangThai: { in: STAGE_TRANG_THAI[stage] } };
+      // "Gấp" = có dòng bắt đầu thuê từ ngày mai trở về trước (kể cả đã trễ lịch). Ngày tính theo giờ VN.
+      const gap: Prisma.DonHangWhereInput = {
+        trangThai: "Confirmed",
+        chiTiet: { some: { ngayBatDau: { lte: toDate(ngayMaiVN()) } } },
+      };
+      const where: Prisma.DonHangWhereInput = {
+        ...base,
+        trangThai: { in: STAGE_TRANG_THAI[stage] },
+        ...(urgent && stage === "ChoBanGiao" ? gap : {}),
+      };
 
       const total = await db.donHang.count({ where });
       const totalPages = Math.max(1, Math.ceil(total / pageSize));
       const current = Math.min(totalPages, Math.max(1, page));
 
-      const [rows, grouped] = await Promise.all([
+      const [rows, grouped, soGap] = await Promise.all([
         db.donHang.findMany({
           where,
           include: includeOrder,
@@ -156,6 +184,7 @@ export function createPrismaRentalOrderStore(getDb: () => PrismaClient): RentalO
           where: { ...base, trangThai: { in: Object.values(STAGE_TRANG_THAI).flat() } },
           _count: { _all: true },
         }),
+        db.donHang.count({ where: { ...base, ...gap } }),
       ]);
 
       const counts = { ChoXacNhan: 0, ChoBanGiao: 0, DangThue: 0 } as Record<RentalStage, number>;
@@ -163,7 +192,7 @@ export function createPrismaRentalOrderStore(getDb: () => PrismaClient): RentalO
         const s = RENTAL_STAGES.find((st) => STAGE_TRANG_THAI[st].includes(g.trangThai));
         if (s) counts[s] += g._count._all;
       }
-      return { orders: rows.map(toRentalOrder), total, page: current, pageSize, totalPages, counts };
+      return { orders: rows.map(toRentalOrder), total, page: current, pageSize, totalPages, counts, soGap };
     },
 
     async get(id) {

@@ -230,7 +230,7 @@ export function PurchaseCartTab({ onUnauthorized, onCount }: { onUnauthorized: (
             {data && (
               <>
                 <br />
-                Giao vận (BRU-05): <span className="font-semibold text-ink">{TEN_DOI_TAC[data.giaoNhan.doiTac]}</span>
+                Giao vận: <span className="font-semibold text-ink">{TEN_DOI_TAC[data.giaoNhan.doiTac]}</span>
               </>
             )}
           </span>
@@ -290,7 +290,7 @@ export function PurchaseCartTab({ onUnauthorized, onCount }: { onUnauthorized: (
         <p className="text-[11px] leading-relaxed text-ink-soft">
           Chỉ các dòng đã chọn được thanh toán; dòng chưa chọn ở lại trong giỏ. Đơn mua chỉ được tạo (và hộp game
           chuyển sang Sold) sau khi thanh toán QR thành công; nếu có khách khác thanh toán trước và hết hàng, phần đó
-          được hoàn vào Ví điện tử nội bộ (BRU-07).
+          được hoàn vào Ví điện tử nội bộ.
         </p>
       </aside>
     </div>

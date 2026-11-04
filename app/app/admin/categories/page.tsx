@@ -77,7 +77,6 @@ export default function AdminCategoriesPage() {
         <h1 className="font-heading text-3xl font-semibold text-ink">Danh mục</h1>
         <p className="mt-2 text-sm font-light text-ink-soft">
           Tổng hợp danh mục đang có sản phẩm, cùng số sản phẩm và doanh thu từng danh mục.
-          <span className="ml-1 text-ink-soft/70">(UC-15)</span>
         </p>
       </div>
 

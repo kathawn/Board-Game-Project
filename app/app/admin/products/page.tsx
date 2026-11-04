@@ -328,7 +328,6 @@ export default function AdminProductsPage() {
           <h1 className="font-heading text-3xl font-semibold text-ink">Sản phẩm &amp; giá</h1>
           <p className="mt-2 text-sm font-light text-ink-soft">
             Thêm / sửa / xoá sản phẩm, cập nhật giá niêm yết. Giá mới chỉ áp dụng cho đơn tạo sau đó.
-            <span className="ml-1 text-ink-soft/70">(UC-15)</span>
           </p>
         </div>
         <button type="button" onClick={() => setSelected("new")} className={btnPrimary}>
@@ -505,7 +504,7 @@ export default function AdminProductsPage() {
                     />
                   </label>
                   <div>
-                    <span className={labelCls}>Giá thuê ngày đầu (BRU-02, tự tính = 10%)</span>
+                    <span className={labelCls}>Giá thuê ngày đầu (tự tính = 10%)</span>
                     <div className="rounded-lg border border-dashed border-ink/20 px-3.5 py-2.5 text-sm tabular-nums text-ink-soft">
                       {form.giaNiemYet > 0 ? formatVND(giaThueNgayDau(form.giaNiemYet)) : "—"}
                     </div>
@@ -581,7 +580,7 @@ export default function AdminProductsPage() {
                     </div>
                     {form.soDonLienQuan > 0 && (
                       <p className="text-[11px] text-ink-soft sm:col-span-2">
-                        Sản phẩm đã có đơn nên không thể xoá (giữ lịch sử đơn). Quản lý hộp game ở UC-09.
+                        Sản phẩm đã có đơn nên không thể xoá (giữ lịch sử đơn). Quản lý hộp game ở mục Nhận hàng trả & kho.
                       </p>
                     )}
                   </FormSection>
