@@ -1,4 +1,5 @@
 import { Dice5, Gamepad2, Users2, HeartHandshake, Gift, PartyPopper } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
@@ -6,7 +7,7 @@ import { ProductCard } from "@/components/ProductCard";
 import { ContactForm } from "@/components/ContactForm";
 import { Reveal } from "@/components/Reveal";
 import { Suspense } from "react";
-import { formatVND } from "@/lib/products";
+import { formatVND, giaThueNgayDau } from "@/lib/products";
 import { catalog } from "@/lib/catalog/server";
 
 const OCCASIONS = [
@@ -29,8 +30,14 @@ export default function CustomerHome() {
 
 async function HomeContent() {
   const PRODUCTS = await catalog.list();
-  const FEATURED = PRODUCTS.find((p) => p.slug === "co-ty-phu") ?? PRODUCTS[0]; // Cờ Tỷ Phú — sản phẩm mở đầu cho khối "nổi bật"
+  // Nổi bật ưu tiên Cờ Tỷ Phú, nhưng nếu hết hàng thì chuyển sang sản phẩm còn hàng đầu tiên.
+  const FEATURED =
+    PRODUCTS.find((p) => p.slug === "co-ty-phu" && p.soLuongTon > 0) ??
+    PRODUCTS.find((p) => p.soLuongTon > 0) ??
+    PRODUCTS[0];
   if (!FEATURED) return null;
+  // Ảnh nền hero: 6 hộp game đầu bảng (sắp theo tên), ghép mờ phía sau lớp phủ rượu vang.
+  const HERO_COVERS = PRODUCTS.filter((p) => p.anh !== "/images/placeholder.jpg").slice(0, 6);
 
   return (
     <>
@@ -38,8 +45,16 @@ async function HomeContent() {
 
       {/* HERO */}
       <section className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-wine-deep text-center">
+        <div className="absolute inset-0 grid grid-cols-3 md:grid-cols-6" aria-hidden>
+          {HERO_COVERS.map((p) => (
+            <div key={p.slug} className="relative">
+              <Image src={p.anh} alt="" fill priority sizes="(min-width: 768px) 17vw, 34vw" className="object-cover" />
+            </div>
+          ))}
+        </div>
+        <div className="absolute inset-0 bg-wine-deep/80" />
         <div
-          className="absolute inset-0 opacity-60"
+          className="absolute inset-0"
           style={{
             background:
               "radial-gradient(ellipse at center, rgba(42,31,26,0.3) 0%, rgba(42,31,26,0.62) 75%, rgba(42,31,26,0.78) 100%)",
@@ -81,8 +96,14 @@ async function HomeContent() {
       <section id="featured" className="overflow-hidden bg-paper py-24 sm:py-36">
         <div className="mx-auto grid max-w-[1240px] grid-cols-1 gap-14 px-5 sm:px-8 lg:grid-cols-[1.1fr_0.9fr] lg:gap-20">
           <Reveal className="relative min-h-[320px] lg:min-h-[480px]">
-            <div className="flex h-full w-[88%] items-center justify-center rounded bg-amber/40 shadow-[0_40px_80px_-30px_rgba(42,31,26,0.35)]">
-              <Dice5 className="h-24 w-24 text-ink/60" aria-hidden />
+            <div className="relative h-full min-h-[320px] w-[88%] overflow-hidden rounded bg-amber/40 shadow-[0_40px_80px_-30px_rgba(42,31,26,0.35)] lg:min-h-[480px]">
+              <Image
+                src={FEATURED.anh}
+                alt={FEATURED.ten}
+                fill
+                sizes="(min-width: 1024px) 45vw, 88vw"
+                className="object-cover"
+              />
             </div>
             <div className="absolute -right-2 bottom-[-20px] w-[260px] rotate-2 rounded border border-ink/12 bg-paper p-6 shadow-[0_30px_60px_-20px_rgba(42,31,26,0.3)] sm:bottom-[-40px] sm:w-[300px]">
               <span className="mb-2.5 block text-[10px] uppercase tracking-wider text-gold">
@@ -123,26 +144,40 @@ async function HomeContent() {
               không vội vàng
             </h2>
             <p className="mb-9 max-w-[440px] text-base font-light leading-relaxed text-ink-soft">
-              {FEATURED.ten} không cần luật phức tạp, không cần giải thích dài
-              dòng — chỉ cần một cái bàn, vài viên xúc xắc, và những người bạn
-              sẵn sàng ngồi lại cùng nhau.
+              {FEATURED.ten} — {FEATURED.moTaNgan} Chỉ cần một cái bàn và những
+              người bạn sẵn sàng ngồi lại cùng nhau.
             </p>
             <div className="flex flex-wrap items-center gap-6">
               <div className="inline-flex overflow-hidden rounded border border-ink/20">
-                <button className="bg-ink px-5 py-2.5 text-xs font-semibold uppercase tracking-wider text-cream">
+                <Link
+                  href={`/products/${FEATURED.slug}?loai=ban`}
+                  className="bg-ink px-5 py-2.5 text-xs font-semibold uppercase tracking-wider text-cream"
+                >
                   Mua
-                </button>
-                <button className="px-5 py-2.5 text-xs font-semibold uppercase tracking-wider text-ink-soft">
+                </Link>
+                <Link
+                  href={`/products/${FEATURED.slug}?loai=thue`}
+                  className="px-5 py-2.5 text-xs font-semibold uppercase tracking-wider text-ink-soft transition-colors hover:bg-ink/5"
+                >
                   Thuê/ngày
-                </button>
+                </Link>
               </div>
-              <div className="flex items-center gap-6">
-                <span className="font-heading text-2xl font-bold">
-                  {formatVND(FEATURED.giaNiemYet)}
-                </span>
-                <button className="bg-wine px-8 py-4 text-[13px] font-semibold uppercase tracking-wider text-paper transition-colors hover:bg-wine-deep">
-                  Thêm vào giỏ
-                </button>
+              <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
+                <div>
+                  <span className="block font-heading text-2xl font-bold">
+                    {formatVND(FEATURED.giaNiemYet)}
+                  </span>
+                  <span className="block text-[11px] text-ink-soft">
+                    hoặc thuê từ {formatVND(giaThueNgayDau(FEATURED.giaNiemYet))}/ngày · còn{" "}
+                    {FEATURED.soLuongTon} hộp
+                  </span>
+                </div>
+                <Link
+                  href={`/products/${FEATURED.slug}?loai=ban`}
+                  className="bg-wine px-8 py-4 text-[13px] font-semibold uppercase tracking-wider text-paper transition-colors hover:bg-wine-deep"
+                >
+                  Xem &amp; thêm vào giỏ
+                </Link>
               </div>
             </div>
           </Reveal>

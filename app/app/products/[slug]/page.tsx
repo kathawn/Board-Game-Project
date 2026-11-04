@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 import { AlertTriangle, CheckCircle2, Users2 } from "lucide-react";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
@@ -10,7 +11,23 @@ import { AddToCartControls } from "@/components/AddToCartControls";
 import { formatVND, giaThueNgayDau } from "@/lib/products";
 import { catalog } from "@/lib/catalog/server";
 
-export default async function ProductDetailPage({
+// Sản phẩm đọc từ DB (runtime) nên phần nội dung phải nằm trong Suspense (cacheComponents), nếu không Next báo lỗi prerender.
+export default function ProductDetailPage(props: {
+  params: Promise<{ slug: string }>;
+  searchParams: Promise<{ loai?: string }>;
+}) {
+  return (
+    <Suspense fallback={<DetailFallback />}>
+      <ProductDetail {...props} />
+    </Suspense>
+  );
+}
+
+function DetailFallback() {
+  return <main className="min-h-screen bg-cream" aria-busy="true" />;
+}
+
+async function ProductDetail({
   params,
   searchParams,
 }: {
@@ -62,6 +79,23 @@ export default async function ProductDetailPage({
                 {product.ten}
               </h1>
 
+              {/* Chuyển nhanh giữa mua đứt và thuê theo ngày */}
+              <div className="mb-6 inline-flex overflow-hidden rounded border border-ink/20">
+                {(["ban", "thue"] as const).map((loaiHien) => (
+                  <Link
+                    key={loaiHien}
+                    href={`/products/${product.slug}?loai=${loaiHien}`}
+                    replace
+                    scroll={false}
+                    className={`px-5 py-2.5 text-xs font-semibold uppercase tracking-wider transition-colors ${
+                      trangThai === loaiHien ? "bg-ink text-cream" : "text-ink-soft hover:bg-ink/5"
+                    }`}
+                  >
+                    {loaiHien === "ban" ? "Mua" : "Thuê/ngày"}
+                  </Link>
+                ))}
+              </div>
+
               <div className="mb-6 flex items-center gap-2 text-sm text-ink-soft">
                 <Users2 className="h-4 w-4" />
                 <span>
@@ -97,13 +131,8 @@ export default async function ProductDetailPage({
               </p>
 
               {trangThai === "ban" ? (
-                <div className="flex flex-wrap gap-4">
-                  <button className="flex-1 bg-wine px-8 py-4 text-[13px] font-semibold uppercase tracking-wider text-paper transition-all hover:-translate-y-0.5 hover:bg-wine-deep">
-                    Mua ngay
-                  </button>
-                  {/* FR-BH-08 — chọn số lượng rồi thêm vào giỏ mua */}
-                  <AddToCartControls product={product} />
-                </div>
+                // FR-BH-08 — chọn số lượng, thêm vào giỏ mua hoặc mua ngay
+                <AddToCartControls product={product} />
               ) : (
                 // FR-CT-01 — chọn ngày thuê riêng cho sản phẩm này rồi thêm vào giỏ thuê
                 <RentalAddToCart productSlug={product.slug} />
