@@ -36,11 +36,19 @@ export interface AdminProductInput {
   soNguoiMax: number;
 }
 
-/** Một danh mục tổng hợp từ SanPham.danhMuc (xem lib/admin/categories.ts) — không phải một bảng riêng. */
+/** Một danh mục = bảng DanhMuc (Admin tạo sẵn) ∪ giá trị SanPham.danhMuc đang dùng (xem lib/admin/categories.ts). */
 export interface AdminCategory {
   ten: string;
   soSanPham: number;
   doanhThu: number;
+}
+
+export type CategoryTab = "" | "co-san-pham" | "trong";
+export type CategorySort = "ten" | "san-pham" | "doanh-thu";
+
+/** Một trang danh mục: tìm/lọc/sắp xếp/phân trang chạy ở server; counts đếm theo từ khoá (chưa áp tab). */
+export interface AdminCategoryPage extends Paged<AdminCategory> {
+  counts: { all: number; coSanPham: number; trong: number };
 }
 
 export interface AdminProductPage {
@@ -66,6 +74,8 @@ export interface RevenueLineRow {
   ngayTao: string;
   khach: string;
   sanPham: string;
+  /** Danh mục của sản phẩm (cho biểu đồ cơ cấu doanh thu theo danh mục + cột trong file Excel). */
+  danhMuc: string;
   tien: number;
 }
 export interface DonRow {

@@ -8,6 +8,14 @@ export const GIA_TOI_DA = 999_999_999_999;
 /** Cột SanPham.danhMuc — dùng chung cho cả form sản phẩm và đổi tên/gộp danh mục (lib/admin/categories.ts). */
 export const DANH_MUC_TOI_DA = 100;
 
+/** Tên danh mục (thêm/đổi tên): trả về tên đã gọn khoảng trắng, hoặc thông báo lỗi. */
+export function validateCategoryName(raw: unknown): { ok: true; ten: string } | { ok: false; error: string } {
+  const ten = typeof raw === "string" ? raw.trim().replace(/\s+/g, " ") : "";
+  if (!ten) return { ok: false, error: "Tên danh mục không được để trống." };
+  if (ten.length > DANH_MUC_TOI_DA) return { ok: false, error: `Tên danh mục tối đa ${DANH_MUC_TOI_DA} ký tự.` };
+  return { ok: true, ten };
+}
+
 export type ValidationResult = { ok: true; value: AdminProductInput } | { ok: false; error: string };
 
 const str = (v: unknown) => (typeof v === "string" ? v.trim() : "");

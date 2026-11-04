@@ -22,3 +22,14 @@ export async function PUT(request: Request, { params }: { params: Promise<{ ten:
   if (!result.ok) return Response.json({ error: result.error }, { status: result.status });
   return Response.json({ ok: true, soSanPhamDaDoi: result.soSanPhamDaDoi });
 }
+
+/** Xoá danh mục trống (chỉ khi không còn sản phẩm nào thuộc nó). */
+export async function DELETE(request: Request, { params }: { params: Promise<{ ten: string }> }) {
+  const auth = await requireStaff(request, ["Admin"]);
+  if (!auth.ok) return auth.response;
+
+  const { ten } = await params;
+  const result = await adminCategories.remove(ten);
+  if (!result.ok) return Response.json({ error: result.error }, { status: result.status });
+  return Response.json({ ok: true });
+}

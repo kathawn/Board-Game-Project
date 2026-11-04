@@ -34,7 +34,7 @@ export function createAdminProductService(getDb: () => PrismaClient): AdminProdu
       const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
       const current = Math.min(totalPages, Math.max(1, page));
 
-      const [rows, grouped, tatCaDanhMuc] = await Promise.all([
+      const [rows, grouped, tatCaDanhMuc, danhMucTaoSan] = await Promise.all([
         db.sanPham.findMany({
           where,
           select: { slug: true, ten: true, danhMuc: true, giaNiemYet: true, anhUrl: true },
@@ -44,6 +44,8 @@ export function createAdminProductService(getDb: () => PrismaClient): AdminProdu
         }),
         db.sanPham.groupBy({ by: ["danhMuc"], where: theoTuKhoa, _count: { _all: true } }),
         db.sanPham.findMany({ distinct: ["danhMuc"], select: { danhMuc: true }, orderBy: { danhMuc: "asc" } }),
+        // Danh mục Admin tạo sẵn (chưa có sản phẩm) vẫn phải chọn được ở form sản phẩm — xem lib/admin/categories.ts.
+        db.danhMuc.findMany({ select: { ten: true } }),
       ]);
 
       const categoryCounts = Object.fromEntries(grouped.map((g) => [g.danhMuc, g._count._all]));
@@ -54,7 +56,9 @@ export function createAdminProductService(getDb: () => PrismaClient): AdminProdu
         totalPages,
         categoryCounts,
         totalAll: grouped.reduce((sum, g) => sum + g._count._all, 0),
-        categories: tatCaDanhMuc.map((c) => c.danhMuc),
+        categories: [...new Set([...tatCaDanhMuc.map((c) => c.danhMuc), ...danhMucTaoSan.map((c) => c.ten)])].sort((a, b) =>
+          a.localeCompare(b, "vi"),
+        ),
       };
     },
 

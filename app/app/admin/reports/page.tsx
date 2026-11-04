@@ -2,8 +2,12 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, ChevronRight, Search } from "lucide-react";
+import { ChevronLeft, ChevronRight, Download, Search } from "lucide-react";
 import { formatVND } from "@/lib/products";
+import { DON_LABEL, HOP_LABEL } from "@/lib/admin/labels";
+import type { Analytics } from "@/lib/admin/analytics";
+import { CHART } from "@/components/admin/charts";
+import { CountColumnChart, DonutChart, HorizontalBarChart, RevenueLineChart } from "@/components/admin/report-charts";
 import type {
   DonRow,
   HopRow,
@@ -22,23 +26,6 @@ import type {
 
 const card = "rounded bg-paper shadow-[0_20px_40px_-20px_rgba(42,31,26,0.2)]";
 
-const DON_LABEL: Record<TrangThaiDon, string> = {
-  Pending: "Chờ xác nhận",
-  Confirmed: "Đã xác nhận",
-  Active: "Đang thuê",
-  Overdue: "Quá hạn",
-  Completed: "Hoàn tất trả",
-  Closed: "Đã đóng",
-  Cancelled: "Đã huỷ",
-};
-const HOP_LABEL: Record<TrangThaiHop, string> = {
-  Available: "Sẵn sàng",
-  Reserved: "Đã đặt giữ",
-  Rented: "Đang cho thuê",
-  Checking: "Đang kiểm đếm",
-  Damaged: "Hư hỏng",
-  Sold: "Đã bán",
-};
 const DON_STATUSES = Object.keys(DON_LABEL) as TrangThaiDon[];
 const HOP_STATUSES = Object.keys(HOP_LABEL) as TrangThaiHop[];
 const DON_TONE: Record<TrangThaiDon, string> = {
@@ -115,7 +102,57 @@ function Pager({ p, onPage, unit }: { p: Paged<unknown>; onPage: (n: number) => 
   );
 }
 
-type Tab = "doanhthu" | "hop" | "don";
+type Tab = "bieudo" | "doanhthu" | "hop" | "don";
+
+/** Nút "Xuất Excel": tải file từ /api/admin/reports/export theo đúng bộ lọc đang chọn (xuất đủ mọi dòng, không chỉ
+ * trang đang xem). Dùng fetch + blob để báo lỗi/401 được thay vì tải về một file JSON lỗi. */
+function ExportButton({ params, disabled }: { params: Record<string, string>; disabled?: boolean }) {
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const run = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/admin/reports/export?${new URLSearchParams(params)}`);
+      if (res.status === 401) {
+        router.push("/staff/login");
+        return;
+      }
+      if (!res.ok) {
+        setError((await res.json().catch(() => null))?.error ?? "Không xuất được file.");
+        return;
+      }
+      const name = /filename="([^"]+)"/.exec(res.headers.get("content-disposition") ?? "")?.[1] ?? "bao-cao.xlsx";
+      const url = URL.createObjectURL(await res.blob());
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = name;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <span className="flex shrink-0 flex-col items-end gap-1">
+      <button
+        type="button"
+        onClick={run}
+        disabled={busy || disabled}
+        className="flex items-center gap-1.5 rounded-full border border-forest/40 bg-forest/8 px-3.5 py-1.5 text-[11px] font-semibold tracking-wide text-forest transition-colors hover:bg-forest hover:text-paper disabled:opacity-50"
+      >
+        <Download className="h-3.5 w-3.5" />
+        {busy ? "Đang xuất..." : "Xuất Excel"}
+      </button>
+      {error && <span className="text-[11px] text-destructive">{error}</span>}
+    </span>
+  );
+}
 
 /** Mọi lời gọi API Admin đi qua đây: 401 (chưa đăng nhập nội bộ / phiên hết hạn) → về trang đăng nhập nội bộ. */
 function useAdminApi() {
@@ -134,7 +171,7 @@ function useAdminApi() {
 }
 
 export default function AdminReportsPage() {
-  const [tab, setTab] = useState<Tab>("doanhthu");
+  const [tab, setTab] = useState<Tab>("bieudo");
   const api = useAdminApi();
   const [nQuaHan, setNQuaHan] = useState(0);
   const [nHong, setNHong] = useState(0);
@@ -152,6 +189,7 @@ export default function AdminReportsPage() {
   }, [api]);
 
   const tabs: { key: Tab; label: string; badge?: number }[] = [
+    { key: "bieudo", label: "Biểu đồ phân tích" },
     { key: "doanhthu", label: "Doanh thu theo tháng" },
     { key: "hop", label: "Tồn kho hộp game", badge: nHong },
     { key: "don", label: "Đơn theo trạng thái", badge: nQuaHan },
@@ -182,6 +220,7 @@ export default function AdminReportsPage() {
         ))}
       </div>
 
+      {tab === "bieudo" && <AnalyticsTab />}
       {tab === "doanhthu" && <RevenueTab api={api} />}
       {tab === "hop" && <BoxesTab />}
       {tab === "don" && <OrdersTab />}
@@ -193,6 +232,122 @@ type Api = ReturnType<typeof useAdminApi>;
 
 function firstOfMonthIso(thang: string) {
   return `${thang}-01`;
+}
+
+// ================= Tab 0: Biểu đồ phân tích (FR-ADM-04, FR-ADM-05) =================
+const PRESETS = [3, 6, 12] as const;
+const thShort = (m: string) => `Th ${Number(m.slice(5))}/${m.slice(2, 4)}`;
+
+function AnalyticsTab() {
+  const router = useRouter();
+  const [soThang, setSoThang] = useState<(typeof PRESETS)[number]>(6);
+  // Khoảng ngày chỉ tính ở trình duyệt sau khi mount (xem ghi chú ở RevenueTab về Date() lúc prerender).
+  const [range, setRange] = useState<{ from: string; to: string } | null>(null);
+  const [data, setData] = useState<(Analytics & { donTheoTrangThai: Record<TrangThaiDon, number> }) | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      const d = new Date();
+      const thisMonth = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+      const start = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() - (soThang - 1), 1));
+      setRange({ from: start.toISOString().slice(0, 10), to: monthEnd(thisMonth) });
+    })();
+  }, [soThang]);
+
+  useEffect(() => {
+    if (!range) return;
+    const controller = new AbortController();
+    (async () => {
+      const res = await fetch(`/api/admin/reports/analytics?${new URLSearchParams(range)}`, { signal: controller.signal });
+      if (res.status === 401) {
+        router.push("/staff/login");
+        return;
+      }
+      if (res.ok) setData(await res.json());
+    })().catch((err) => {
+      if (err.name !== "AbortError") throw err;
+    });
+    return () => controller.abort();
+  }, [range, router]);
+
+  const tong = data ? data.monthly.reduce((s, m) => s + m.ban + m.thue, 0) : 0;
+
+  return (
+    <div>
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-ink-soft">Khoảng thời gian</span>
+          <div className="flex gap-1.5">
+            {PRESETS.map((n) => (
+              <Chip key={n} active={soThang === n} onClick={() => setSoThang(n)}>
+                {n} tháng gần nhất
+              </Chip>
+            ))}
+          </div>
+        </div>
+        <div className="flex items-center gap-4">
+          <span className="text-xs text-ink-soft">
+            {range ? `${ngayVN(range.from)} – ${ngayVN(range.to)}` : "Đang tải..."} · Tổng{" "}
+            <span className="font-semibold tabular-nums text-wine">{formatVND(tong)}</span>
+          </span>
+          <ExportButton params={range ? { type: "analytics", ...range } : {}} disabled={!range} />
+        </div>
+      </div>
+
+      <div className="grid gap-6 xl:grid-cols-2">
+        <section className={`${card} p-6 xl:col-span-2`}>
+          <h2 className="mb-1 font-heading text-lg text-ink">Xu hướng doanh thu theo tháng</h2>
+          <p className="mb-4 text-xs text-ink-soft">Doanh thu bán và thuê từng tháng (không tính cọc, phí ship, khoản hoàn).</p>
+          <div className="min-h-[300px]">
+            {data ? (
+              <RevenueLineChart data={data.monthly.map((m) => ({ label: thShort(m.thang), ban: m.ban, thue: m.thue }))} />
+            ) : (
+              <p className="py-24 text-center text-sm text-ink-soft">Đang tải...</p>
+            )}
+          </div>
+        </section>
+
+        <section className={`${card} p-6`}>
+          <h2 className="mb-1 font-heading text-lg text-ink">Cơ cấu doanh thu theo danh mục</h2>
+          <p className="mb-4 text-xs text-ink-soft">Danh mục nào đóng góp nhiều nhất vào tổng doanh thu.</p>
+          <div className="min-h-[220px]">
+            {data ? (
+              <DonutChart rows={data.theoDanhMuc.map((r) => ({ ten: r.ten, value: r.doanhThu }))} centerLabel="Tổng" />
+            ) : (
+              <p className="py-16 text-center text-sm text-ink-soft">Đang tải...</p>
+            )}
+          </div>
+        </section>
+
+        <section className={`${card} p-6`}>
+          <h2 className="mb-1 font-heading text-lg text-ink">Top sản phẩm theo doanh thu</h2>
+          <p className="mb-4 text-xs text-ink-soft">Tối đa 8 sản phẩm có doanh thu cao nhất.</p>
+          <div className="min-h-[220px]">
+            {data ? (
+              <HorizontalBarChart rows={data.topSanPham.map((r) => ({ ten: r.ten, value: r.doanhThu }))} color={CHART.ban} />
+            ) : (
+              <p className="py-16 text-center text-sm text-ink-soft">Đang tải...</p>
+            )}
+          </div>
+        </section>
+
+        <section className={`${card} p-6 xl:col-span-2`}>
+          <h2 className="mb-1 font-heading text-lg text-ink">Số đơn theo trạng thái</h2>
+          <p className="mb-4 text-xs text-ink-soft">Tính theo ngày tạo đơn trong khoảng đã chọn (cả đơn bán và đơn thuê).</p>
+          <div className="min-h-[220px]">
+            {data ? (
+              <CountColumnChart
+                data={DON_STATUSES.map((s) => ({ label: DON_LABEL[s], value: data.donTheoTrangThai[s] }))}
+                color={CHART.thue}
+              />
+            ) : (
+              <p className="py-16 text-center text-sm text-ink-soft">Đang tải...</p>
+            )}
+          </div>
+        </section>
+      </div>
+    </div>
+  );
 }
 
 // ================= Tab 1: Doanh thu theo tháng / khoảng ngày (FR-ADM-04) =================
@@ -367,6 +522,7 @@ function RevenueTab({ api }: { api: Api }) {
         </h3>
         <div className="mb-3 flex items-center gap-3">
           <SearchBox value={q} onChange={onSearch} placeholder="Tìm mã đơn, khách, sản phẩm…" />
+          <ExportButton params={{ type: "revenue", from, to, loai, q: qApplied }} disabled={!ready || rangeInvalid} />
         </div>
         <div className="mb-3 flex flex-wrap gap-1.5">
           {([["", "Tất cả", curDisplay?.soDon ?? 0], ["Ban", "Bán", curDisplay?.ban.soDon ?? 0], ["Thue", "Thuê", curDisplay?.thue.soDon ?? 0]] as const).map(([v, label, n]) => (
@@ -466,6 +622,7 @@ function BoxesTab() {
 
       <div className="mb-3 flex items-center gap-3">
         <SearchBox value={q} onChange={onSearch} placeholder="Tìm mã hộp hoặc tên sản phẩm…" />
+        <ExportButton params={{ type: "boxes", trangThai, q: qApplied }} />
       </div>
       <div className="mb-3 flex flex-wrap gap-1.5">
         <Chip active={trangThai === ""} count={data?.totalAll ?? 0} onClick={() => { setTrangThai(""); setPage(1); }}>
@@ -536,6 +693,7 @@ function OrdersTab() {
             </Chip>
           ))}
         </div>
+        <ExportButton params={{ type: "orders", trangThai, loai, q: qApplied }} />
       </div>
       <div className="mb-3 flex flex-wrap gap-1.5">
         <Chip active={trangThai === ""} count={data?.totalAll ?? 0} onClick={() => { setTrangThai(""); setPage(1); }}>
