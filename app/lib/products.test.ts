@@ -15,9 +15,9 @@ describe("filterProducts (FR-BH-02)", () => {
   });
 
   test("filters by exact category", () => {
-    const result = filterProducts(PRODUCTS, { danhMuc: "Bài - Gia đình" });
+    const result = filterProducts(PRODUCTS, { danhMuc: "Gia đình" });
 
-    expect(result.map((p) => p.slug).sort()).toEqual(["exploding-kittens", "uno"]);
+    expect(result.map((p) => p.slug).sort()).toEqual(["co-ty-phu", "exploding-kittens", "uno"]);
   });
 
   test("filters by sale price range (loai=ban) using giaNiemYet", () => {
@@ -37,10 +37,10 @@ describe("filterProducts (FR-BH-02)", () => {
   test("combines keyword, category, and price filters together", () => {
     const result = filterProducts(PRODUCTS, {
       q: "o",
-      danhMuc: "Chiến thuật - Thu thập",
+      danhMuc: "Xếp hình & thu thập",
       loai: "ban",
       giaMin: 0,
-      giaMax: 1000000,
+      giaMax: 500000, // loại Carcassonne (520000) khỏi cùng danh mục
     });
 
     expect(result.map((p) => p.slug)).toEqual(["splendor"]);

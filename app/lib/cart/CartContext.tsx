@@ -1,6 +1,7 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import type { StockCheckResult } from "@/lib/products";
 
@@ -22,6 +23,10 @@ interface CartContextValue {
   removeItem: (sanPhamId: string) => Promise<void>;
   /** Số dòng giỏ thuê (FR-CT-01) — để badge Header đếm cả hai loại giỏ. */
   rentalCount: number;
+  /** null = đang kiểm tra; true/false = khách đã/chưa đăng nhập (suy ra từ /api/cart/summary). */
+  loggedIn: boolean | null;
+  /** Tải lại trạng thái đăng nhập + giỏ (gọi sau khi đăng nhập/đăng xuất hoặc khi vào trang có Header). */
+  refresh: () => Promise<void>;
   setRentalCount: (n: number) => void;
   totalItems: number;
   totalAmount: number;
@@ -39,38 +44,42 @@ async function parseErrorOrItems(response: Response): Promise<
   return { ok: true, items: body.items };
 }
 
+/** Khu nội bộ (Staff/Admin) dùng phiên riêng, không có giỏ hàng — không cần hỏi giỏ của khách ở đó. */
+const isInternalArea = (pathname: string) => pathname.startsWith("/staff") || pathname.startsWith("/admin");
+
 export function CartProvider({ children }: { children: ReactNode }) {
+  const pathname = usePathname();
+  const internal = isInternalArea(pathname);
   const [items, setItems] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [rentalCount, setRentalCount] = useState(0);
+  const [loggedIn, setLoggedIn] = useState<boolean | null>(null);
+  // Dùng chung một request đang bay: Provider và Header cùng gọi refresh() lúc tải trang vẫn chỉ tốn 1 lần gọi API.
+  const inFlight = useRef<Promise<void> | null>(null);
 
-  useEffect(() => {
-    // Chỉ lấy số đếm của giỏ thuê (trang 1), không tải cả giỏ — giỏ có thể rất lớn.
-    fetch("/api/rental-cart/list?page=1")
+  const refresh = useCallback((): Promise<void> => {
+    if (inFlight.current) return inFlight.current;
+    // /api/cart/summary luôn trả 200 (khách chưa đăng nhập → loggedIn:false) nên không sinh lỗi 401 trong console.
+    const p = fetch("/api/cart/summary")
       .then((res) => (res.ok ? res.json() : null))
       .then((body) => {
-        if (body?.counts) setRentalCount(body.counts.all);
+        setLoggedIn(Boolean(body?.loggedIn));
+        setItems(body?.items ?? []);
+        setRentalCount(body?.rentalCount ?? 0);
       })
-      .catch(() => {});
+      .catch(() => setLoggedIn(false))
+      .finally(() => {
+        setLoading(false);
+        inFlight.current = null;
+      });
+    inFlight.current = p;
+    return p;
   }, []);
 
   useEffect(() => {
-    let cancelled = false;
-    fetch("/api/cart")
-      .then((res) => (res.ok ? res.json() : { items: [] }))
-      .then((body) => {
-        if (!cancelled) setItems(body.items ?? []);
-      })
-      .catch(() => {
-        // not logged in / network error — mockup just shows an empty cart
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+    if (internal) return;
+    void refresh();
+  }, [internal, refresh]);
 
   const addItem = useCallback(async (sanPhamId: string, soLuong: number): Promise<StockCheckResult> => {
     const response = await fetch("/api/cart/items", {
@@ -109,8 +118,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const totalAmount = items.reduce((sum, i) => sum + i.donGia * i.soLuong, 0);
 
   const value = useMemo<CartContextValue>(
-    () => ({ items, loading, addItem, updateQuantity, removeItem, rentalCount, setRentalCount, totalItems, totalAmount }),
-    [items, loading, addItem, updateQuantity, removeItem, rentalCount, totalItems, totalAmount],
+    () => ({ items, loading, addItem, updateQuantity, removeItem, rentalCount, loggedIn, refresh, setRentalCount, totalItems, totalAmount }),
+    [items, loading, addItem, updateQuantity, removeItem, rentalCount, loggedIn, refresh, totalItems, totalAmount],
   );
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;

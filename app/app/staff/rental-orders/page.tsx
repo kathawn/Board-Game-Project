@@ -35,7 +35,7 @@ const btnPrimary =
 /** Mức khẩn của đơn "Chờ bàn giao" theo ngày bắt đầu thuê sớm nhất: đã trễ lịch / hôm nay / ngày mai. */
 function mucGap(order: RentalOrder, today: string): { label: string; className: string } | null {
   const start = order.lines.map((l) => l.startDate).filter(Boolean).sort()[0];
-  if (!start) return null;
+  if (!start || !today) return null; // today rỗng = chưa mount ở trình duyệt
   const tomorrow = new Date(Date.parse(`${today}T00:00:00Z`) + 86_400_000).toISOString().slice(0, 10);
   if (start < today) return { label: "Trễ lịch", className: "bg-destructive/15 text-destructive" };
   if (start === today) return { label: "Giao hôm nay", className: "bg-destructive/15 text-destructive" };
@@ -54,7 +54,13 @@ export default function StaffRentalOrdersPage() {
   const [qApplied, setQApplied] = useState("");
   const [page, setPage] = useState(1);
   const [urgentOnly, setUrgentOnly] = useState(false);
-  const today = homNayVN();
+  // "Hôm nay" chỉ có nghĩa ở trình duyệt của người xem — không đọc Date.now() lúc prerender (Next.js Cache
+  // Components chặn giá trị không ổn định này), nên set ở useEffect sau khi mount; rỗng thì chưa gắn nhãn gấp.
+  const [today, setToday] = useState("");
+  useEffect(() => {
+    const t = setTimeout(() => setToday(homNayVN()), 0);
+    return () => clearTimeout(t);
+  }, []);
   const [data, setData] = useState<RentalOrderPage | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);

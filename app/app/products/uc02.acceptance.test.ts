@@ -17,7 +17,7 @@ describe("UC-02 Xem danh sách sản phẩm — acceptance (FR-BH-02, SC-01)", (
 
   test("a customer searches by name, filters by category, and narrows by sale price range in one request — exactly the matching products come back, nothing else", async () => {
     const { status, body } = await getProducts(
-      "?q=o&danhMuc=Chi%E1%BA%BFn%20thu%E1%BA%ADt%20-%20Thu%20th%E1%BA%ADp&giaMin=0&giaMax=1000000",
+      `?q=o&danhMuc=${encodeURIComponent("Xếp hình & thu thập")}&giaMin=0&giaMax=500000`,
     );
 
     expect(status).toBe(200);
