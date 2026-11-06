@@ -1,4 +1,9 @@
 # BoardVerse
+Xem video giới thiệu:
+
+
+https://github.com/user-attachments/assets/3e41a3f2-5b26-4b24-80af-ad42567c3905
+
 
 Hệ thống **mua bán và cho thuê board game theo ngày** — đồ án cá nhân giả định dùng làm portfolio BA/dev. Dự án đi trọn lộ trình **BRD → SRS → lập trình**, trong đó phần nghiệp vụ (tính cọc, giá thuê lũy tiến, phạt trễ hạn, đền bù linh kiện, hoàn cọc vào ví, chống tranh chấp khi thanh toán đồng thời) được đặc tả trước rồi mới hiện thực.
 
